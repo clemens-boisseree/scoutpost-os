@@ -69,10 +69,10 @@ install_node_tooling() {
   fi
 
   log "Agent and provider tooling"
-  if [ "$(jq -r '.agents.install_firecrawl_skill // true' "$MANIFEST")" = "true" ]; then
+  if [ "$(jq -r 'if .agents.install_firecrawl_skill == false then "false" else "true" end' "$MANIFEST")" = "true" ]; then
     npx -y firecrawl-cli@latest init --all --browser || warn "Firecrawl CLI/skill install failed; continue setup."
   fi
-  if [ "$(jq -r '.agents.install_supabase_skill // true' "$MANIFEST")" = "true" ]; then
+  if [ "$(jq -r 'if .agents.install_supabase_skill == false then "false" else "true" end' "$MANIFEST")" = "true" ]; then
     npx skills add supabase/agent-skills --skill supabase || warn "Supabase skill install failed; continue setup."
   fi
 
@@ -301,7 +301,7 @@ build_frontend() {
 }
 
 install_sync_workflow() {
-  if [ "$(jq -r '.options.install_sync_workflow // true' "$MANIFEST")" != "true" ]; then
+  if [ "$(jq -r 'if .options.install_sync_workflow == false then "false" else "true" end' "$MANIFEST")" != "true" ]; then
     return
   fi
   log "Sync workflow"

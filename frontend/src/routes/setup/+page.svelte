@@ -6,6 +6,7 @@
 		ExternalLink,
 		FileJson,
 		FileText,
+		Package,
 		Mail,
 		Map,
 		RefreshCw,
@@ -17,6 +18,7 @@
 	import SharpCodeBlock from '$lib/components/docs/SharpCodeBlock.svelte';
 	import {
 		buildAgentManifestPrompt,
+		buildDockerInstallerInstructions,
 		buildInstallScript,
 		buildNewsroomOnboarding,
 		normalizeDomains,
@@ -60,6 +62,7 @@
 	$: validation = validateSetupManifest(manifest);
 	$: redactedManifest = JSON.stringify(redactSetupManifest(manifest), null, 2);
 	$: installScript = buildInstallScript(manifest);
+	$: dockerInstructions = buildDockerInstallerInstructions();
 	$: agentPrompt = buildAgentManifestPrompt('./cojournalist-setup.json');
 	$: agentPromptFile = `${agentPrompt}
 
@@ -169,6 +172,14 @@ Run the manifest installer from the repository root. Never ask the operator to p
 		download('cojournalist-setup.json', JSON.stringify(manifest, null, 2), 'application/json');
 		window.setTimeout(() => {
 			download('cojournalist-agent-prompt.md', agentPromptFile, 'text/markdown');
+		}, 150);
+	}
+
+	async function downloadDockerInstaller() {
+		if (!(await validateBeforeDownload())) return;
+		download('cojournalist-setup.json', JSON.stringify(manifest, null, 2), 'application/json');
+		window.setTimeout(() => {
+			download('cojournalist-docker-install.md', dockerInstructions, 'text/markdown');
 		}, 150);
 	}
 
@@ -513,6 +524,14 @@ Run the manifest installer from the repository root. Never ask the operator to p
 						<p>Download `cojournalist-setup.json` plus a prompt file telling the agent to read the local manifest.</p>
 						<button type="button" class="primary-button" on:click={downloadAgentInstructions}>
 							<FileText size={16} /> Download JSON + prompt
+						</button>
+					</div>
+					<div class="option">
+						<Package class="option-icon" size={22} />
+						<h3>Docker installer</h3>
+						<p>Download the credentials manifest plus Docker commands that mount it read-only into the installer container.</p>
+						<button type="button" class="primary-button" on:click={downloadDockerInstaller}>
+							<Download size={16} /> Download Docker files
 						</button>
 					</div>
 				</div>
@@ -906,7 +925,7 @@ Run the manifest installer from the repository root. Never ask the operator to p
 
 	.output-options {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: var(--space-4);
 	}
 

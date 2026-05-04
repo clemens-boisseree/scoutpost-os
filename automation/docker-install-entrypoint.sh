@@ -13,13 +13,13 @@ warn() { printf "WARN: %s\n" "$1" >&2; }
 find_or_clone_repo() {
   if [ -n "$REPO_DIR" ]; then
     mkdir -p "$(dirname "$REPO_DIR")"
-  elif [ -d "$WORKSPACE/.git" ] || [ -d "$WORKSPACE/automation" ]; then
+  elif [ -e "$WORKSPACE/.git" ] || [ -d "$WORKSPACE/automation" ]; then
     REPO_DIR="$WORKSPACE"
   else
     REPO_DIR="$WORKSPACE/cojournalist-os"
   fi
 
-  if [ -d "$REPO_DIR/.git" ]; then
+  if [ -e "$REPO_DIR/.git" ]; then
     return
   fi
 

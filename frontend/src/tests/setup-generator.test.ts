@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	buildAgentManifestPrompt,
+	buildDockerInstallerInstructions,
 	buildInstallScript,
 	buildNewsroomOnboarding,
 	deriveAgentTargetFromManifest,
@@ -112,16 +113,22 @@ describe('setup generator', () => {
 		const data = manifest();
 		const script = buildInstallScript(data);
 		const prompt = buildAgentManifestPrompt('./cojournalist-setup.json');
+		const docker = buildDockerInstallerInstructions();
 		const onboarding = buildNewsroomOnboarding(data);
 
 		expect(script).toContain('automation/setup-from-manifest.sh');
 		expect(prompt).toContain('Do not ask me to paste secrets into chat.');
 		expect(prompt).toContain('Install the upstream sync workflow by default');
 		expect(prompt).toContain('maintenance reporting');
+		expect(docker).toContain('deploy/installer/Dockerfile');
+		expect(docker).toContain(
+			'-v "$PWD/cojournalist-setup.json:/config/cojournalist-setup.json:ro"'
+		);
+		expect(docker).toContain('Do not paste cojournalist-setup.json into chat.');
 		expect(onboarding).toContain('https://newsroomref.supabase.co/functions/v1');
 		expect(onboarding).toContain('If you use ChatGPT in the browser');
 		expect(onboarding).toContain('click Agents');
 		expect(onboarding).not.toContain('anon-secret');
-		expect(`${prompt}\n${onboarding}`).not.toContain('www.cojournalist.ai');
+		expect(`${prompt}\n${docker}\n${onboarding}`).not.toContain('www.cojournalist.ai');
 	});
 });

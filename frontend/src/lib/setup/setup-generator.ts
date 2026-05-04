@@ -184,6 +184,50 @@ export function buildAgentManifestPrompt(manifestPath = 'cojournalist-setup.json
 	].join('\n');
 }
 
+export function buildDockerInstallerInstructions(manifestPath = 'cojournalist-setup.json'): string {
+	return `# coJournalist Docker installer
+
+This path runs the same manifest installer in a container so the setup tooling does not need to be installed directly on the host.
+
+Expected local files:
+
+- ./${manifestPath}
+- deploy/installer/Dockerfile in the coJournalist repository
+
+Run these commands from the coJournalist repository root:
+
+\`\`\`bash
+docker build -f deploy/installer/Dockerfile -t cojournalist-installer .
+
+docker run --rm -it \\
+  -v "$PWD:/workspace" \\
+  -v "$PWD/${manifestPath}:/config/cojournalist-setup.json:ro" \\
+  cojournalist-installer install
+\`\`\`
+
+Read-only validation:
+
+\`\`\`bash
+docker run --rm -it \\
+  -v "$PWD:/workspace" \\
+  -v "$PWD/${manifestPath}:/config/cojournalist-setup.json:ro" \\
+  cojournalist-installer doctor
+\`\`\`
+
+Prepare an upstream maintenance update:
+
+\`\`\`bash
+docker run --rm -it \\
+  -v "$PWD:/workspace" \\
+  -v "$HOME/.config/gh:/root/.config/gh:ro" \\
+  -v "$PWD/${manifestPath}:/config/cojournalist-setup.json:ro" \\
+  cojournalist-installer update
+\`\`\`
+
+Do not paste ${manifestPath} into chat. It contains local deployment credentials and should stay on disk.
+`;
+}
+
 export function buildInstallScript(manifest: SetupManifest): string {
 	const manifestJson = JSON.stringify(manifest, null, 2);
 	return `#!/usr/bin/env bash
