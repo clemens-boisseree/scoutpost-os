@@ -41,9 +41,22 @@ function brokerBaseUrl(): string {
  * Params (query): client_id, redirect_uri, response_type=code, state,
  *                 code_challenge, code_challenge_method=S256, scope
  */
-export async function authorize(req: Request): Promise<Response> {
+export async function authorize(req: Request, requestId?: string): Promise<Response> {
   const url = new URL(req.url);
   const params = url.searchParams;
+  logEvent({
+    level: "info",
+    fn: "mcp-server.authorize",
+    event: "authorize_in",
+    request_id: requestId,
+    client_id: params.get("client_id"),
+    redirect_uri: params.get("redirect_uri"),
+    response_type: params.get("response_type"),
+    has_code_challenge: !!params.get("code_challenge"),
+    code_challenge_method: params.get("code_challenge_method"),
+    state_len: (params.get("state") ?? "").length,
+    scope: params.get("scope"),
+  });
 
   const clientId = params.get("client_id");
   const redirectUri = params.get("redirect_uri");
@@ -225,7 +238,14 @@ function callbackBounceHtml(commitUrl: string): string {
  * PKCE challenge from the signed mcp_state, and 302s to the MCP client's
  * original redirect_uri.
  */
-export async function commitCallback(req: Request): Promise<Response> {
+export async function commitCallback(req: Request, requestId?: string): Promise<Response> {
+  logEvent({
+    level: "info",
+    fn: "mcp-server.commit",
+    event: "commit_in",
+    request_id: requestId,
+    content_type: req.headers.get("content-type") ?? null,
+  });
   let form: URLSearchParams;
   try {
     const ct = (req.headers.get("content-type") ?? "").toLowerCase();

@@ -68,11 +68,19 @@ function timingSafeEqualString(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export async function tokenHandler(req: Request): Promise<Response> {
+export async function tokenHandler(req: Request, requestId?: string): Promise<Response> {
   if (req.method !== "POST") {
     return oauthError("invalid_request", "POST required", 405);
   }
   const contentType = req.headers.get("content-type") ?? "";
+  logEvent({
+    level: "info",
+    fn: "mcp-server.token",
+    event: "token_in",
+    request_id: requestId,
+    content_type: contentType,
+    has_basic_auth: (req.headers.get("authorization") ?? "").startsWith("Basic "),
+  });
   if (!contentType.includes("application/x-www-form-urlencoded")) {
     return oauthError(
       "invalid_request",
@@ -91,11 +99,23 @@ export async function tokenHandler(req: Request): Promise<Response> {
 
   const grantType = form.get("grant_type") ?? "";
 
+  logEvent({
+    level: "info",
+    fn: "mcp-server.token",
+    event: "token_grant",
+    request_id: requestId,
+    grant_type: grantType,
+    has_code: !!form.get("code"),
+    has_code_verifier: !!form.get("code_verifier"),
+    has_client_id: !!form.get("client_id"),
+    has_client_secret: !!form.get("client_secret"),
+    redirect_uri: form.get("redirect_uri"),
+  });
   if (grantType === "authorization_code") {
-    return await handleAuthorizationCode(req, form);
+    return await handleAuthorizationCode(req, form, requestId);
   }
   if (grantType === "refresh_token") {
-    return await handleRefreshToken(form);
+    return await handleRefreshToken(form, requestId);
   }
   return oauthError(
     "unsupported_grant_type",
@@ -104,7 +124,7 @@ export async function tokenHandler(req: Request): Promise<Response> {
   );
 }
 
-async function handleAuthorizationCode(req: Request, form: URLSearchParams): Promise<Response> {
+async function handleAuthorizationCode(req: Request, form: URLSearchParams, requestId?: string): Promise<Response> {
   const code = form.get("code") ?? "";
   const codeVerifier = form.get("code_verifier") ?? "";
   const formClientId = form.get("client_id") ?? "";
@@ -217,6 +237,7 @@ async function handleAuthorizationCode(req: Request, form: URLSearchParams): Pro
     level: "info",
     fn: "mcp-server.token",
     event: "code_exchanged",
+    request_id: requestId,
     client_id: clientId,
     user_id: row.user_id,
   });
@@ -230,7 +251,7 @@ async function handleAuthorizationCode(req: Request, form: URLSearchParams): Pro
   });
 }
 
-async function handleRefreshToken(form: URLSearchParams): Promise<Response> {
+async function handleRefreshToken(form: URLSearchParams, requestId?: string): Promise<Response> {
   const refreshToken = form.get("refresh_token") ?? "";
   if (!refreshToken) {
     return oauthError("invalid_request", "refresh_token is required", 400);
@@ -265,8 +286,22 @@ async function handleRefreshToken(form: URLSearchParams): Promise<Response> {
     const desc = (payload && typeof payload === "object" && "error_description" in payload
       ? String((payload as Record<string, unknown>).error_description)
       : text) || "refresh failed";
+    logEvent({
+      level: "warn",
+      fn: "mcp-server.token",
+      event: "refresh_failed",
+      request_id: requestId,
+      upstream_status: res.status,
+      desc,
+    });
     return oauthError("invalid_grant", desc, res.status === 401 ? 401 : 400);
   }
+  logEvent({
+    level: "info",
+    fn: "mcp-server.token",
+    event: "refresh_ok",
+    request_id: requestId,
+  });
 
   // Success — hand Supabase's response straight back. It already has the
   // required fields (access_token, refresh_token, token_type, expires_in).

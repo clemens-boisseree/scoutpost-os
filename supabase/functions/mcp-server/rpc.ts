@@ -22,8 +22,18 @@
 
 import { AuthedUser, requireUserOrApiKey } from "../_shared/auth.ts";
 import { logEvent } from "../_shared/log.ts";
+import { baseUrl } from "./oauth/metadata.ts";
 
-const PROTOCOL_VERSION = "2024-11-05";
+// Latest MCP Streamable HTTP spec. Claude.ai / Claude Desktop / Cowork all
+// negotiate to this; we keep parity to avoid silent "Disconnected" failures.
+export const MCP_PROTOCOL_VERSION = "2025-06-18";
+// Older version we still accept on initialize for forward-compat with
+// pre-2025-06-18 clients (mcp-remote bridge, MCP Inspector older builds).
+const SUPPORTED_PROTOCOL_VERSIONS = new Set([
+  MCP_PROTOCOL_VERSION,
+  "2025-03-26",
+  "2024-11-05",
+]);
 const SERVER_NAME = "cojournalist";
 const SERVER_VERSION = "0.3.0";
 
@@ -742,6 +752,34 @@ function rpcErr(
   );
 }
 
+/**
+ * RFC 9728 §5.3 + MCP Authorization spec: when a protected MCP method is
+ * called without (or with an invalid) bearer token, respond HTTP 401 with
+ * a `WWW-Authenticate: Bearer` challenge that points at our protected-
+ * resource metadata. This is the signal that makes MCP clients (claude.ai,
+ * Claude Desktop, Claude Code, MCP Inspector) trigger OAuth/DCR. Returning
+ * a JSON-RPC error inside HTTP 200 looks like "method failed" and the
+ * client never starts the OAuth flow.
+ */
+function unauthorized(id: unknown, reason: string): Response {
+  const resourceMetadata = `${baseUrl()}/.well-known/oauth-protected-resource`;
+  return new Response(
+    JSON.stringify({
+      jsonrpc: "2.0",
+      id: id ?? null,
+      error: { code: -32001, message: reason },
+    }),
+    {
+      status: 401,
+      headers: {
+        "Content-Type": "application/json",
+        "WWW-Authenticate":
+          `Bearer realm="MCP", error="invalid_token", resource_metadata="${resourceMetadata}"`,
+      },
+    },
+  );
+}
+
 async function readRpcBody(req: Request): Promise<JsonRpcRequest | null> {
   try {
     const body = (await req.json()) as JsonRpcRequest;
@@ -752,16 +790,39 @@ async function readRpcBody(req: Request): Promise<JsonRpcRequest | null> {
   }
 }
 
-export async function handleRpc(req: Request): Promise<Response> {
+export async function handleRpc(req: Request, requestId?: string): Promise<Response> {
   const body = await readRpcBody(req);
   if (!body) {
+    logEvent({
+      level: "warn",
+      fn: "mcp-server.rpc",
+      event: "parse_error",
+      request_id: requestId,
+    });
     return rpcErr(null, { code: -32700, message: "Parse error" }, 400);
   }
 
+  logEvent({
+    level: "info",
+    fn: "mcp-server.rpc",
+    event: "rpc_in",
+    request_id: requestId,
+    method: body.method,
+    rpc_id: body.id ?? null,
+    has_auth: !!(req.headers.get("authorization") ?? req.headers.get("Authorization")),
+  });
+
   // Unauthenticated methods — spec-mandated handshake.
   if (body.method === "initialize") {
+    // Echo the client's requested protocolVersion when we support it; fall
+    // back to our advertised default. MCP clients (Claude.ai in particular)
+    // disconnect if the server picks a version they don't recognise.
+    const requested = (body.params?.protocolVersion as string | undefined) ?? "";
+    const protocolVersion = SUPPORTED_PROTOCOL_VERSIONS.has(requested)
+      ? requested
+      : MCP_PROTOCOL_VERSION;
     return rpcOk(body.id, {
-      protocolVersion: PROTOCOL_VERSION,
+      protocolVersion,
       serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
       capabilities: { tools: { listChanged: false } },
     });
@@ -782,22 +843,37 @@ export async function handleRpc(req: Request): Promise<Response> {
     token = forwardedApiKey.trim() ||
       (header.startsWith("Bearer ") ? header.slice(7).trim() : "");
     if (!token) {
-      return rpcErr(body.id, { code: -32001, message: "missing bearer token" });
+      return unauthorized(body.id, "missing bearer token");
     }
   } catch (e) {
-    return rpcErr(body.id, {
-      code: -32001,
-      message: e instanceof Error ? e.message : "unauthorized",
-    });
+    return unauthorized(
+      body.id,
+      e instanceof Error ? e.message : "unauthorized",
+    );
   }
 
   if (body.method === "tools/list") {
-    return rpcOk(body.id, {
-      tools: TOOLS.map((t) => ({
-        name: t.name,
-        description: t.description,
-        inputSchema: t.inputSchema,
-      })),
+    const toolsList = TOOLS.map((t) => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+    }));
+    const responseBody = JSON.stringify({
+      jsonrpc: "2.0",
+      id: body.id ?? null,
+      result: { tools: toolsList },
+    });
+    logEvent({
+      level: "info",
+      fn: "mcp-server.rpc",
+      event: "tools_list_served",
+      request_id: requestId,
+      tool_count: toolsList.length,
+      response_bytes: responseBody.length,
+    });
+    return new Response(responseBody, {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
     });
   }
 

@@ -10,7 +10,11 @@
  *              Windsurf, Gemini CLI, Goose, Hermes).
  *   - 'mcp'  — the agent connects to the remote MCP server at MCP_URL.
  *              The only option for chat UIs without shell access
- *              (Claude Desktop / claude.ai, ChatGPT).
+ *              (Claude Desktop / claude.ai / Cowork). ChatGPT custom MCP
+ *              connectors are gated to Business/Enterprise/Edu workspaces,
+ *              so we don't list a recipe — direct ChatGPT users at the
+ *              browser-based "paste cojo CLI export" workflow generated
+ *              by `lib/setup/setup-generator.ts` instead.
  *
  * `defaultPath` per agent picks the one we lead with; the modal exposes
  * a toggle when both are available.
@@ -37,7 +41,7 @@ export interface Recipe {
   /** Short headline that renders under the path selector. */
   tagline: string;
 
-  /** Optional tier / compatibility callout (ChatGPT Plus limitation, stdio bridge, etc.). */
+  /** Optional tier / compatibility callout (stdio bridge, beta status, etc.). */
   warning?: RecipeWarning;
 
   mode: RecipeMode;
@@ -116,6 +120,11 @@ const mcpRecipes: Record<AgentSlug, Recipe> = {
     tagline: "One command in your terminal. OAuth opens on first use.",
     mode: "cli-command",
     command: "claude mcp add --transport http cojournalist {{MCP_URL}}",
+    uiSteps: [
+      "Run the command above in your terminal.",
+      "Claude Code opens your default browser to sign in. If no browser opens, run `claude mcp list` to print the auth URL and open it manually.",
+      "Approve the connection — the CLI completes the OAuth handshake automatically.",
+    ],
     docsUrl: "https://code.claude.com/docs/en/mcp",
     docsLabel: "Claude Code MCP docs",
   },
@@ -124,37 +133,16 @@ const mcpRecipes: Record<AgentSlug, Recipe> = {
     tagline: "Add a custom connector in Claude — no terminal needed.",
     mode: "ui-steps",
     uiSteps: [
-      "Open Claude Desktop or claude.ai.",
+      "Open Claude Desktop, claude.ai, or Cowork.",
       "Go to Customize → Connectors.",
       'Click "+" then "Add custom connector".',
-      "Paste the URL below as the Remote MCP Server URL.",
-      "Click Add, then sign in with your coJournalist account when prompted.",
+      "Paste the URL below as the Remote MCP Server URL and click Add.",
+      "Click Connect on the new entry. A coJournalist sign-in popup appears (Anthropic brokers OAuth from their cloud — no separate desktop browser opens). Approve and you're done.",
     ],
     configSnippet: MCP_URL,
     docsUrl:
       "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp",
     docsLabel: "Claude custom connector docs",
-  },
-
-  chatgpt: {
-    tagline: "Add a custom connector in ChatGPT Settings.",
-    warning: {
-      title: "ChatGPT plan matters",
-      body:
-        "Full tool-calling connectors require a Business, Enterprise, or Edu workspace. Plus and Pro users can connect coJournalist to Deep Research in read-only mode only. If you only have Plus/Pro, you can still read your data — but ChatGPT won’t be able to create or run scouts on your behalf.",
-    },
-    mode: "ui-steps",
-    uiSteps: [
-      "In ChatGPT, open Settings → Connectors (or the avatar menu → Connectors).",
-      'Click "Create" to add a new connector.',
-      "Paste the URL below as the MCP Server URL.",
-      "Save, then sign in with your coJournalist account when prompted.",
-      'In a new chat, enable the connector from the "+" menu before asking questions.',
-    ],
-    configSnippet: MCP_URL,
-    docsUrl:
-      "https://help.openai.com/en/articles/11487775-connectors-in-chatgpt",
-    docsLabel: "ChatGPT connectors docs",
   },
 
   codex: {
@@ -276,7 +264,7 @@ args = ["-y", "mcp-remote", "{{MCP_URL}}"]`,
 
 // ----- Which path is primary per agent --------------------------------------
 // Rule of thumb: if the agent has shell access, default to CLI. Chat UIs
-// without shell (Claude Desktop, ChatGPT) are MCP-only. "Other" offers both.
+// without shell (Claude Desktop, OpenClaw) are MCP-only. "Other" offers both.
 
 const CLI_CAPABLE: AgentSlug[] = [
   "claude-code",
@@ -288,7 +276,7 @@ const CLI_CAPABLE: AgentSlug[] = [
   "hermes",
 ];
 
-const MCP_ONLY: AgentSlug[] = ["claude-desktop", "chatgpt", "openclaw"];
+const MCP_ONLY: AgentSlug[] = ["claude-desktop", "openclaw"];
 
 export interface AgentRecipes {
   /** Which paths are available for this agent, in display order. */
@@ -358,7 +346,6 @@ export function getRecipe(slug: AgentSlug, target: AgentTargetContext = HOSTED_A
 const SKILL_LOCATIONS: Record<AgentSlug, string> = {
   "claude-code": ".claude/skills/cojournalist.md",
   "claude-desktop": "this Project's instructions (or your memory)",
-  chatgpt: "this Project's instructions (or your memory)",
   codex: "AGENTS.md (or ~/.codex/AGENTS.md for global reuse)",
   cursor: ".cursor/rules/cojournalist.mdc",
   windsurf: ".windsurf/rules/cojournalist.md",

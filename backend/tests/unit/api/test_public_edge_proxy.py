@@ -173,6 +173,60 @@ def test_mcp_proxy_serves_protected_resource_metadata_without_upstream(monkeypat
     assert fake.calls == []
 
 
+def test_mcp_proxy_serves_authorization_metadata_at_path_suffixed_well_known(monkeypatch):
+    """RFC 8414 §3 / RFC 9728 §3.1: clients append the resource path to the
+    well-known URL when the resource lives below the host root. Anthropic's
+    Cowork connect flow uses this form, so /.well-known/oauth-authorization-
+    server/mcp must serve our AS metadata — without this, it falls through
+    to the SvelteKit SPA and Anthropic gets HTML back, fails to parse, and
+    aborts with start_error / 'Couldn't reach the MCP server'."""
+    monkeypatch.setattr(public_edge_proxy.settings, "supabase_url", "https://proj.supabase.co")
+    fake = _FakeClient(_FakeResp(500, b"should-not-be-called"))
+
+    with patch("app.routers.public_edge_proxy.httpx.AsyncClient", return_value=fake):
+        client = _mount()
+        res = client.get(
+            "/.well-known/oauth-authorization-server/mcp",
+            headers={"host": "www.cojournalist.ai", "x-forwarded-proto": "https"},
+        )
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("application/json")
+    assert res.json()["issuer"] == "https://www.cojournalist.ai/mcp"
+    assert fake.calls == []
+
+
+def test_mcp_proxy_serves_protected_resource_metadata_at_path_suffixed_well_known(monkeypatch):
+    monkeypatch.setattr(public_edge_proxy.settings, "supabase_url", "https://proj.supabase.co")
+    fake = _FakeClient(_FakeResp(500, b"should-not-be-called"))
+
+    with patch("app.routers.public_edge_proxy.httpx.AsyncClient", return_value=fake):
+        client = _mount()
+        res = client.get(
+            "/.well-known/oauth-protected-resource/mcp",
+            headers={"host": "www.cojournalist.ai", "x-forwarded-proto": "https"},
+        )
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("application/json")
+    assert res.json()["resource"] == "https://www.cojournalist.ai/mcp"
+    assert fake.calls == []
+
+
+def test_mcp_proxy_path_suffixed_well_known_404s_for_non_mcp_resource(monkeypatch):
+    """Belt-and-braces: only honour requests whose tail matches our /mcp
+    surface so we don't accidentally advertise OAuth metadata for any
+    arbitrary path. Other resources should 404 cleanly (not return SPA HTML)."""
+    monkeypatch.setattr(public_edge_proxy.settings, "supabase_url", "https://proj.supabase.co")
+
+    client = _mount()
+    res = client.get(
+        "/.well-known/oauth-protected-resource/some-other-thing",
+        headers={"host": "www.cojournalist.ai", "x-forwarded-proto": "https"},
+    )
+    assert res.status_code == 404
+
+
 def test_proxy_returns_sterile_502_on_upstream_error(monkeypatch):
     monkeypatch.setattr(public_edge_proxy.settings, "supabase_url", "https://proj.supabase.co")
 

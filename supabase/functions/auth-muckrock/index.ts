@@ -229,17 +229,35 @@ async function handleLogin(req: Request): Promise<Response> {
   if (url.searchParams.has("post_login_redirect") && !postLoginRedirect) {
     return jsonError("invalid post_login_redirect", 400);
   }
-  // Only accept mcp_callback URLs on the same Supabase project — belt and
-  // braces against someone using us as an open redirector.
+  // Only accept mcp_callback URLs that point at our own MCP server — belt
+  // and braces against someone using us as an open redirector.
+  //
+  // Two valid hosts:
+  //   - the raw Supabase project host (legacy; used when MCP_SERVER_BASE_URL
+  //     is unset and the mcp-server function self-references via SUPABASE_URL)
+  //   - the public MCP host advertised in /.well-known metadata
+  //     (i.e. https://www.cojournalist.ai/mcp). MCP clients see and trust
+  //     that public host, so the post-OAuth bounce should land there too.
   if (mcpCallback) {
     const supabaseHost = new URL(envOrThrow("SUPABASE_URL")).host;
+    const publicMcpBase = Deno.env.get("MCP_SERVER_BASE_URL");
+    const publicHost = publicMcpBase ? new URL(publicMcpBase).host : "";
     let cbHost = "";
+    let cbPath = "";
     try {
-      cbHost = new URL(mcpCallback).host;
+      const cbUrl = new URL(mcpCallback);
+      cbHost = cbUrl.host;
+      cbPath = cbUrl.pathname;
     } catch {
       /* parse failure handled below */
     }
-    if (cbHost !== supabaseHost) {
+    const hostOk = cbHost === supabaseHost ||
+      (publicHost !== "" && cbHost === publicHost);
+    // Path must live under the mcp-server function (raw Supabase) or the
+    // /mcp prefix (public host) — never an arbitrary path on the same host.
+    const pathOk = cbPath.startsWith("/functions/v1/mcp-server/") ||
+      cbPath.startsWith("/mcp/");
+    if (!hostOk || !pathOk) {
       return jsonError("invalid mcp_callback", 400);
     }
   }

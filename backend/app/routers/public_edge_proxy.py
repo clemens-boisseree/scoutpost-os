@@ -285,6 +285,52 @@ async def proxy_root_mcp_protected_resource_metadata(request: Request) -> Respon
     return _mcp_protected_resource_metadata(request)
 
 
+# RFC 9728 §3.1 / RFC 8414 §3 path-suffixed well-known URLs.
+# Resources / authorization servers exposed at https://host/<path> publish
+# their metadata at https://host/.well-known/oauth-{protected-resource,
+# authorization-server}/<path>. Anthropic's connect flow follows RFC 9728
+# strictly, so /.well-known/oauth-protected-resource/mcp must serve the
+# protected-resource JSON for our /mcp surface — without this handler the
+# request falls through to the SvelteKit SPA and Anthropic gets HTML +
+# 200, fails to parse, and shows "Couldn't reach the MCP server"
+# (start_error). We accept any tail path that begins with our /mcp prefix
+# and serve the same body the unsuffixed form returns.
+@router.api_route(
+    "/.well-known/oauth-authorization-server/{tail:path}",
+    methods=["GET", "HEAD"],
+    include_in_schema=False,
+)
+async def proxy_path_mcp_authorization_metadata(
+    tail: str,
+    request: Request,
+) -> Response:
+    if not _is_mcp_well_known_tail(tail):
+        raise HTTPException(status_code=404, detail="not found")
+    return _mcp_authorization_metadata(request)
+
+
+@router.api_route(
+    "/.well-known/oauth-protected-resource/{tail:path}",
+    methods=["GET", "HEAD"],
+    include_in_schema=False,
+)
+async def proxy_path_mcp_protected_resource_metadata(
+    tail: str,
+    request: Request,
+) -> Response:
+    if not _is_mcp_well_known_tail(tail):
+        raise HTTPException(status_code=404, detail="not found")
+    return _mcp_protected_resource_metadata(request)
+
+
+def _is_mcp_well_known_tail(tail: str) -> bool:
+    # Only honour requests that match our published MCP base path. Anything
+    # else stays a 404 so we don't accidentally advertise OAuth metadata
+    # for some other surface.
+    normalised = "/" + tail.strip("/")
+    return normalised in {"/mcp"} or normalised.startswith("/mcp/")
+
+
 @router.api_route(
     "/mcp",
     methods=["GET", "POST", "OPTIONS", "HEAD"],
