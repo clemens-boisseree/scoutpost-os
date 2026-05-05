@@ -6,7 +6,7 @@
 
 export type AgentSlug =
 	| 'claude-code'
-	| 'claude-desktop'
+	| 'claude-cowork'
 	| 'codex'
 	| 'cursor'
 	| 'windsurf'
@@ -30,8 +30,10 @@ export const AGENTS: AgentMeta[] = [
 		iconInner: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>'
 	},
 	{
-		slug: 'claude-desktop',
-		name: 'Claude Desktop',
+		slug: 'claude-cowork',
+		// Same custom-connector flow works in Claude Desktop, claude.ai, and
+		// Cowork — Cowork is Anthropic's umbrella product surface for it.
+		name: 'Claude Cowork',
 		iconInner:
 			'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>'
 	},

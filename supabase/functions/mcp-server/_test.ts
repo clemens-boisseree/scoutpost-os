@@ -127,44 +127,71 @@ Deno.test("router: GET / returns 405 with Allow: POST (not 404 / 501)", async ()
   assertStringIncludes(res.headers.get("Allow") ?? "", "POST");
 });
 
-Deno.test("rpc: initialize echoes client protocolVersion when supported", async () => {
-  const res = await handleRequest(
-    new Request("https://example.test/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-06-18",
-          capabilities: {},
-          clientInfo: { name: "deno-test", version: "0" },
-        },
+Deno.test("rpc: initialize without bearer returns HTTP 401 with WWW-Authenticate", async () => {
+  // Why: Anthropic's Cowork connector card defaults to "Configure"
+  // (auth optional) instead of "Connect" (auth required) when initialize
+  // succeeds without auth. Returning 401 + WWW-Authenticate up front
+  // tells the client this resource is OAuth-protected so it kicks off
+  // DCR + the OAuth flow on the very first probe instead of forcing the
+  // user to disconnect+reconnect to trigger auth.
+  const original = Deno.env.get("MCP_SERVER_BASE_URL");
+  Deno.env.set("MCP_SERVER_BASE_URL", "https://www.cojournalist.ai/mcp");
+  try {
+    const res = await handleRequest(
+      new Request("https://example.test/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name: "deno-test", version: "0" },
+          },
+        }),
       }),
-    }),
-  );
-  assertEquals(res.status, 200);
-  const body = await res.json();
-  assertEquals(body.result.protocolVersion, "2025-06-18");
-  assertEquals(body.result.serverInfo.name, "cojournalist");
+    );
+    assertEquals(res.status, 401);
+    const wwwAuth = res.headers.get("WWW-Authenticate") ?? "";
+    assertStringIncludes(wwwAuth, "Bearer");
+    assertStringIncludes(
+      wwwAuth,
+      `resource_metadata="https://www.cojournalist.ai/mcp/.well-known/oauth-protected-resource"`,
+    );
+    await res.body?.cancel();
+  } finally {
+    if (original === undefined) Deno.env.delete("MCP_SERVER_BASE_URL");
+    else Deno.env.set("MCP_SERVER_BASE_URL", original);
+  }
 });
 
-Deno.test("rpc: initialize falls back to advertised version for unknown client version", async () => {
+Deno.test("rpc: notifications/initialized without bearer returns 401, not 202", async () => {
+  // Same rationale as initialize: the auth gate runs before method
+  // dispatch, so any unauthenticated probe is challenged uniformly.
   const res = await handleRequest(
     new Request("https://example.test/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: { protocolVersion: "1999-01-01", capabilities: {} },
+        method: "notifications/initialized",
       }),
     }),
   );
-  const body = await res.json();
-  assertEquals(body.result.protocolVersion, MCP_PROTOCOL_VERSION);
+  assertEquals(res.status, 401);
+  await res.body?.cancel();
+});
+
+Deno.test("rpc: negotiateProtocolVersion echoes supported and falls back otherwise", async () => {
+  const { negotiateProtocolVersion } = await import("./rpc.ts");
+  assertEquals(negotiateProtocolVersion("2025-06-18"), "2025-06-18");
+  assertEquals(negotiateProtocolVersion("2025-03-26"), "2025-03-26");
+  assertEquals(negotiateProtocolVersion("2024-11-05"), "2024-11-05");
+  assertEquals(negotiateProtocolVersion("1999-01-01"), MCP_PROTOCOL_VERSION);
+  assertEquals(negotiateProtocolVersion(undefined), MCP_PROTOCOL_VERSION);
+  assertEquals(negotiateProtocolVersion(""), MCP_PROTOCOL_VERSION);
 });
 
 Deno.test("rpc: tools/list without bearer returns HTTP 401 with WWW-Authenticate", async () => {

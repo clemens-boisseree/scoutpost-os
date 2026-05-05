@@ -37,6 +37,12 @@ const SUPPORTED_PROTOCOL_VERSIONS = new Set([
 const SERVER_NAME = "cojournalist";
 const SERVER_VERSION = "0.3.0";
 
+export function negotiateProtocolVersion(requested: string | undefined): string {
+  return SUPPORTED_PROTOCOL_VERSIONS.has(requested ?? "")
+    ? (requested as string)
+    : MCP_PROTOCOL_VERSION;
+}
+
 // ---------------------------------------------------------------------------
 // Forwarder
 // ---------------------------------------------------------------------------
@@ -812,26 +818,18 @@ export async function handleRpc(req: Request, requestId?: string): Promise<Respo
     has_auth: !!(req.headers.get("authorization") ?? req.headers.get("Authorization")),
   });
 
-  // Unauthenticated methods — spec-mandated handshake.
-  if (body.method === "initialize") {
-    // Echo the client's requested protocolVersion when we support it; fall
-    // back to our advertised default. MCP clients (Claude.ai in particular)
-    // disconnect if the server picks a version they don't recognise.
-    const requested = (body.params?.protocolVersion as string | undefined) ?? "";
-    const protocolVersion = SUPPORTED_PROTOCOL_VERSIONS.has(requested)
-      ? requested
-      : MCP_PROTOCOL_VERSION;
-    return rpcOk(body.id, {
-      protocolVersion,
-      serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
-      capabilities: { tools: { listChanged: false } },
-    });
-  }
-  if (body.method === "notifications/initialized") {
-    // JSON-RPC notification — no response. Deno.serve still needs a 202.
-    return new Response(null, { status: 202 });
-  }
-
+  // Auth gate runs BEFORE any method dispatch — including the
+  // `initialize` handshake. Why: Anthropic's Cowork connector card
+  // chooses between "Configure" (server reachable, auth optional) and
+  // "Connect" (auth required, kick off DCR + OAuth) based on whether
+  // the very first unauthenticated probe returns 200 or 401. If we
+  // happily 200 on initialize without a bearer, the card defaults to
+  // Configure and the user has to manually disconnect+reconnect to
+  // trigger the OAuth flow. Returning 401+WWW-Authenticate up front
+  // signals "this resource is OAuth-protected" exactly per the MCP
+  // Authorization spec, and Claude clients then fetch our
+  // /.well-known/oauth-protected-resource metadata, run DCR, and only
+  // re-issue initialize once they've minted a token.
   let user: AuthedUser;
   let token: string;
   try {
@@ -850,6 +848,21 @@ export async function handleRpc(req: Request, requestId?: string): Promise<Respo
       body.id,
       e instanceof Error ? e.message : "unauthorized",
     );
+  }
+
+  if (body.method === "initialize") {
+    // Echo the client's requested protocolVersion when we support it; fall
+    // back to our advertised default. MCP clients (Claude.ai in particular)
+    // disconnect if the server picks a version they don't recognise.
+    return rpcOk(body.id, {
+      protocolVersion: negotiateProtocolVersion(body.params?.protocolVersion as string | undefined),
+      serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
+      capabilities: { tools: { listChanged: false } },
+    });
+  }
+  if (body.method === "notifications/initialized") {
+    // JSON-RPC notification — no response. Deno.serve still needs a 202.
+    return new Response(null, { status: 202 });
   }
 
   if (body.method === "tools/list") {
