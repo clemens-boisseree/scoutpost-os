@@ -110,9 +110,30 @@ Deno.test("metadata: protected resource advertises same MCP resource", async () 
 // findings if any of these change.
 // ---------------------------------------------------------------------------
 
-Deno.test("router: HEAD / returns 200 with MCP-Protocol-Version header", async () => {
+Deno.test("router: HEAD / without bearer returns 401 with WWW-Authenticate", async () => {
+  // Why: Anthropic's Cowork connector card uses the very first HEAD probe
+  // to choose between "Configure" (200 → reachable, no auth) and "Connect"
+  // (401 → auth required, kick off DCR+OAuth). Returning 200 here makes
+  // the card silently default to Configure and the user has to manually
+  // disconnect+reconnect to trigger auth — the symptom we shipped on
+  // 2026-05-05 even after gating the POST initialize handshake.
   const res = await handleRequest(
     new Request("https://example.test/", { method: "HEAD" }),
+  );
+  assertEquals(res.status, 401);
+  const wwwAuth = res.headers.get("WWW-Authenticate") ?? "";
+  assertStringIncludes(wwwAuth, "Bearer");
+  assertStringIncludes(wwwAuth, "resource_metadata=");
+  assertEquals(res.headers.get("MCP-Protocol-Version"), MCP_PROTOCOL_VERSION);
+  assertStringIncludes(res.headers.get("Allow") ?? "", "POST");
+});
+
+Deno.test("router: HEAD / with bearer returns 200 (still a valid liveness probe)", async () => {
+  const res = await handleRequest(
+    new Request("https://example.test/", {
+      method: "HEAD",
+      headers: { authorization: "Bearer dummy-token" },
+    }),
   );
   assertEquals(res.status, 200);
   assertEquals(res.headers.get("MCP-Protocol-Version"), MCP_PROTOCOL_VERSION);

@@ -121,8 +121,28 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     // MCP Streamable HTTP discovery: clients HEAD the root to confirm the
-    // server speaks MCP and to read the advertised protocol version.
+    // server speaks MCP. Anthropic's Cowork connector card uses this probe
+    // to decide between "Configure" (200 → server reachable, no auth) and
+    // "Connect" (401 → auth required, kick off DCR + OAuth). We must
+    // return 401 + WWW-Authenticate when the bearer is missing — same as
+    // the POST initialize gate — or the card silently defaults to
+    // Configure and the user has to disconnect+reconnect to trigger auth.
     if (path === "/" && req.method === "HEAD") {
+      const bearer = (req.headers.get("authorization") ?? "").trim();
+      if (!bearer.toLowerCase().startsWith("bearer ")) {
+        const resourceMetadata =
+          `${url.origin}/.well-known/oauth-protected-resource`;
+        return new Response(null, {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            "WWW-Authenticate":
+              `Bearer realm="MCP", error="invalid_token", resource_metadata="${resourceMetadata}"`,
+            "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+            "Allow": "POST, HEAD, OPTIONS",
+          },
+        });
+      }
       return new Response(null, {
         status: 200,
         headers: {
