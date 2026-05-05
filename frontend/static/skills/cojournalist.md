@@ -1,3 +1,10 @@
+---
+name: cojournalist
+description: >
+  Operate coJournalist through MCP, CLI, or REST: create scouts, search
+  information units, export findings, and preserve editorial verification.
+---
+
 # coJournalist skill
 
 You have been connected to **coJournalist**, a monitoring platform for journalists and newsrooms. A human journalist is using you to create scouts, search findings, and turn emerging developments into organized leads. This document tells you how to use coJournalist correctly and how to behave around editorial verification.

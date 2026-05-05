@@ -1,3 +1,10 @@
+---
+name: cojournalist-setup
+description: >
+  Install, self-host, configure, or validate coJournalist for hosted SaaS or
+  self-hosted deployments, including MCP and CLI setup.
+---
+
 # coJournalist setup skill
 
 Use this when the user wants to install, self-host, configure, or validate
