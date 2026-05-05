@@ -154,6 +154,12 @@ export interface CivicTrackedPage {
   rawHtml?: string | null;
 }
 
+export interface CivicDiscoveryCandidate {
+  url: string;
+  description: string;
+  confidence: number;
+}
+
 const MEETING_URL_SCHEMA: Record<string, unknown> = {
   type: "object",
   properties: {
@@ -333,6 +339,85 @@ export function filterCivicDiscoveryCandidates<T extends { url: string }>(
       return false;
     }
   });
+}
+
+export function rankCivicDiscoveryUrls(
+  urls: string[],
+  opts: { maxCandidates?: number } = {},
+): CivicDiscoveryCandidate[] {
+  const maxCandidates = Math.max(1, opts.maxCandidates ?? 5);
+  const seen = new Set<string>();
+  const scored: Array<CivicDiscoveryCandidate & { score: number }> = [];
+
+  for (const url of urls) {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      continue;
+    }
+
+    const normalizedUrl = parsed.toString().split("#")[0].replace(/\/+$/, "");
+    if (seen.has(normalizedUrl)) continue;
+    seen.add(normalizedUrl);
+
+    const path = parsed.pathname.toLowerCase();
+    if (!isCivicScrapableUrl(normalizedUrl)) continue;
+    if (path.endsWith(".pdf")) continue;
+    if (path.startsWith("/pdf/")) continue;
+
+    const matchText = normalizeCivicText(`${parsed.pathname} ${parsed.search}`);
+    const hasMeetingTerms = hasMeetingKeyword(matchText);
+    const governmentContext = hasAnyTerm(matchText, [
+      "gemeinderat",
+      "urversammlung",
+      "stadtrat",
+      "conseil communal",
+      "city council",
+      "common council",
+      "commission",
+      "rat",
+      "politik",
+      "sitzungen",
+      "seances",
+      "meetings",
+    ]);
+    const archiveContext = hasAnyTerm(matchText, [
+      "archiv",
+      "archive",
+      "protokolle",
+      "protocols",
+      "minutes",
+      "pv",
+    ]);
+
+    if (!hasMeetingTerms && !governmentContext && !archiveContext) continue;
+
+    const depth = parsed.pathname.split("/").filter(Boolean).length;
+    const documentClass = civicDocumentClassPriority(matchText);
+    const score = (hasMeetingTerms ? 0.62 : 0) +
+      (documentClass > 1 ? documentClass * 0.08 : 0) +
+      (governmentContext ? 0.22 : 0) +
+      (archiveContext ? 0.1 : 0) +
+      (depth > 0 && depth <= 3 ? 0.05 : 0) +
+      (parsed.search ? 0.01 : 0);
+
+    scored.push({
+      url: normalizedUrl,
+      description:
+        "Likely civic listing page with meeting or decision documents.",
+      confidence: Math.min(0.95, Math.max(0.55, Number(score.toFixed(2)))),
+      score,
+    });
+  }
+
+  return scored
+    .sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      return a.url.localeCompare(b.url);
+    })
+    .slice(0, maxCandidates)
+    .map(({ score: _score, ...candidate }) => candidate);
 }
 
 function hasMeetingKeyword(text: string): boolean {

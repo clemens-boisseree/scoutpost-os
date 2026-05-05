@@ -30,13 +30,14 @@
 
 import { z } from "https://esm.sh/zod@3";
 import { handleCors } from "../_shared/cors.ts";
-import { requireUser, AuthedUser } from "../_shared/auth.ts";
+import { AuthedUser, requireUser } from "../_shared/auth.ts";
 import { jsonError, jsonFromError, jsonOk } from "../_shared/responses.ts";
 import { ValidationError } from "../_shared/errors.ts";
 import { logEvent } from "../_shared/log.ts";
 import { firecrawlMap } from "../_shared/firecrawl.ts";
 import {
   filterCivicDiscoveryCandidates,
+  rankCivicDiscoveryUrls,
 } from "../_shared/civic_links.ts";
 import { previewCivicTrackedUrls } from "../_shared/civic_preview.ts";
 import { geminiExtract } from "../_shared/gemini.ts";
@@ -161,6 +162,9 @@ async function discover(req: Request, user: AuthedUser): Promise<Response> {
   }
 
   const list = urls.slice(0, 200).map((u, i) => `${i + 1}. ${u}`).join("\n");
+  const deterministicCandidates = rankCivicDiscoveryUrls(urls, {
+    maxCandidates: 5,
+  });
   const prompt =
     "You are a civic data assistant. Below is a list of URLs from a local " +
     "government website. Identify the best candidates — pages that serve as " +
@@ -180,7 +184,9 @@ async function discover(req: Request, user: AuthedUser): Promise<Response> {
     "- description: what it likely contains (1 sentence)\n" +
     "- confidence: 0.0 to 1.0\n\n" +
     "Return ONLY a JSON object with a 'candidates' array. Max 5 entries.\n\n" +
-    `URLs (${urls.length} total, showing first ${Math.min(urls.length, 200)}):\n${list}`;
+    `URLs (${urls.length} total, showing first ${
+      Math.min(urls.length, 200)
+    }):\n${list}`;
 
   let extraction: { candidates: Candidate[] };
   try {
@@ -192,14 +198,15 @@ async function discover(req: Request, user: AuthedUser): Promise<Response> {
       event: "rank_failed",
       user_id: user.id,
       msg: e instanceof Error ? e.message : String(e),
+      fallback_candidates: deterministicCandidates.length,
     });
-    return jsonOk({ candidates: [] });
+    return jsonOk({ candidates: deterministicCandidates });
   }
 
-  const candidates = filterCivicDiscoveryCandidates((extraction.candidates ?? [])
-    .filter((c) => c && typeof c.url === "string" && c.url.trim().length > 0)
-    .slice(0, 5)
-    .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)));
+  const candidates = mergeCivicCandidates([
+    ...deterministicCandidates,
+    ...(extraction.candidates ?? []),
+  ]);
 
   logEvent({
     level: "info",
@@ -212,6 +219,31 @@ async function discover(req: Request, user: AuthedUser): Promise<Response> {
   });
 
   return jsonOk({ candidates });
+}
+
+function mergeCivicCandidates(candidates: Candidate[]): Candidate[] {
+  const merged = new Map<string, Candidate>();
+  for (
+    const candidate of filterCivicDiscoveryCandidates(candidates)
+      .filter((c) => c && typeof c.url === "string" && c.url.trim().length > 0)
+      .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+  ) {
+    const normalizedUrl = normalizeCandidateUrl(candidate.url);
+    if (!normalizedUrl || merged.has(normalizedUrl)) continue;
+    merged.set(normalizedUrl, {
+      ...candidate,
+      url: normalizedUrl,
+    });
+  }
+  return [...merged.values()].slice(0, 5);
+}
+
+function normalizeCandidateUrl(url: string): string | null {
+  try {
+    return new URL(url).toString().split("#")[0].replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
 }
 
 async function test(req: Request, user: AuthedUser): Promise<Response> {

@@ -9,6 +9,7 @@ import {
   extractCivicLinksFromPages,
   filterCivicDiscoveryCandidates,
   isCivicScrapableUrl,
+  rankCivicDiscoveryUrls,
 } from "./civic_links.ts";
 
 Deno.test("extractCivicLinksFromHtml extracts same-domain document links and strips fragments", () => {
@@ -101,6 +102,26 @@ Deno.test("filterCivicDiscoveryCandidates rejects dead /pdf listing paths but ke
       confidence: 0.9,
     },
   ]);
+});
+
+Deno.test("rankCivicDiscoveryUrls finds the Zermatt protocol listing before PDF documents", () => {
+  const candidates = rankCivicDiscoveryUrls([
+    "https://gemeinde.zermatt.ch",
+    "https://gemeinde.zermatt.ch/news",
+    "https://gemeinde.zermatt.ch/pdf/protokoll/pur030520.pdf",
+    "https://gemeinde.zermatt.ch/pdf/protokoll/pur020619.pdf",
+    "https://gemeinde.zermatt.ch/gemeinderat/kommissionen",
+    "https://gemeinde.zermatt.ch/urversammlung/protokoll",
+  ]);
+
+  assertEquals(
+    candidates[0].url,
+    "https://gemeinde.zermatt.ch/urversammlung/protokoll",
+  );
+  assertEquals(
+    candidates.some((candidate) => candidate.url.includes("/pdf/protokoll/")),
+    false,
+  );
 });
 
 Deno.test("classifyCivicMeetingUrls uses keyword stage for pdf minutes links", async () => {

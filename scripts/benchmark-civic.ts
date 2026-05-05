@@ -574,6 +574,43 @@ async function runAudit(ctx: BenchCtx, maxDrain: number): Promise<void> {
   const path = `${outDir}/civic-audit-${stamp}.md`;
   await Deno.writeTextFile(path, md);
   console.log(`\nReport written: ${path}`);
+
+  const critical = civicCriticalFailures(records);
+  if (critical.length > 0) {
+    console.error("\nCritical Civic benchmark failures:");
+    for (const item of critical) console.error(`  - ${item}`);
+    Deno.exitCode = 1;
+  }
+}
+
+function civicCriticalFailures(records: CivicAuditRecordExt[]): string[] {
+  const failures: string[] = [];
+  for (const r of records) {
+    if (r.error) {
+      failures.push(`${r.permutation}: ${r.error}`);
+      continue;
+    }
+    if ((r.discovery_count ?? 0) === 0) {
+      failures.push(`${r.permutation}: discovery returned zero candidates`);
+      continue;
+    }
+    if ((r.preview_documents ?? 0) === 0) {
+      failures.push(
+        `${r.permutation}: preview resolved zero documents from ${
+          r.selected_url ?? "selected URL"
+        }`,
+      );
+      continue;
+    }
+    if ((r.queries_generated ?? 0) === 0) {
+      failures.push(
+        `${r.permutation}: civic-execute queued zero documents from ${
+          r.selected_url ?? "selected URL"
+        }`,
+      );
+    }
+  }
+  return failures;
 }
 
 // ---------------------------------------------------------------------------
@@ -590,6 +627,7 @@ try {
   if (audit) {
     await runAudit(ctx, maxDrain);
   } else {
+    const records: CivicAuditRecordExt[] = [];
     for (const url of urls) {
       hr(`Civic Scout: ${url}`);
       const r = await runCivic(
@@ -599,7 +637,14 @@ try {
         maxDrain,
         { verbose: true },
       );
+      records.push(r);
       printRecord(r);
+    }
+    const critical = civicCriticalFailures(records);
+    if (critical.length > 0) {
+      console.error("\nCritical Civic benchmark failures:");
+      for (const item of critical) console.error(`  - ${item}`);
+      Deno.exitCode = 1;
     }
   }
 } finally {
