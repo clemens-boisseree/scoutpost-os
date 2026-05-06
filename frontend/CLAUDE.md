@@ -105,6 +105,13 @@ If you change login flow code, verify that `/docs` and `/skills` stay same-origi
 on localhost and that `/api/auth/login` on localhost redirects to MuckRock with
 `redirect_uri=http://localhost:5173/api/auth/callback`.
 
+Hosted production uses `PUBLIC_DEPLOYMENT_TARGET=supabase` and
+`PUBLIC_MUCKROCK_ENABLED=true`. That combination must keep
+`$lib/stores/auth.ts` on `auth-supabase.ts`; the MuckRock-specific branch lives
+inside `auth-supabase.ts -> login()`. Do not route hosted production through
+`auth-muckrock.ts`, and do not collapse `auth-supabase.ts -> login()` to
+plain `/login`.
+
 ## i18n (Paraglide)
 
 Internationalization uses [Paraglide JS](https://inlang.com/m/gerre34r) with inlang message format.

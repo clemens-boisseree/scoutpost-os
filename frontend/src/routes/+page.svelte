@@ -43,6 +43,7 @@
 	let userMenuOpen = false;
 	let preferencesOpen = false;
 	let agentsOpen = false;
+	let agentsApiOnly = false;
 
 	type ActivePanel = 'workspace' | 'pulse' | 'web' | 'social' | 'civic';
 	let activePanel: ActivePanel = 'workspace';
@@ -524,7 +525,7 @@
 			</div>
 			<button
 				class="agents-btn"
-				on:click|stopPropagation={() => (agentsOpen = true)}
+				on:click|stopPropagation={() => { agentsApiOnly = false; agentsOpen = true; }}
 				aria-haspopup="dialog"
 			>
 				<Bot size={14} />
@@ -555,6 +556,9 @@
 						{/if}
 						<button class="user-menu-item" role="menuitem" on:click={() => { userMenuOpen = false; preferencesOpen = true; }}>
 							Preferences
+						</button>
+						<button class="user-menu-item" role="menuitem" on:click={() => { userMenuOpen = false; agentsApiOnly = true; agentsOpen = true; }}>
+							API
 						</button>
 						<a href="/docs" class="user-menu-item" role="menuitem" on:click={() => (userMenuOpen = false)}>Docs</a>
 						<a href="/terms" class="user-menu-item" role="menuitem" on:click={() => (userMenuOpen = false)}>Terms</a>
@@ -762,6 +766,8 @@
 
 	<AgentsModal
 		open={agentsOpen}
+		apiOnly={agentsApiOnly}
+		initialView={agentsApiOnly ? 'api' : 'agents'}
 		onClose={() => (agentsOpen = false)}
 	/>
 

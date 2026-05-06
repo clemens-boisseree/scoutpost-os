@@ -15,6 +15,8 @@
 	export let open = false;
 	/** Optional starting view — 'api' jumps straight to the REST panel. */
 	export let initialView: 'agents' | 'api' = 'agents';
+	/** When true, locks the modal to the API view — hides agents navigation. */
+	export let apiOnly = false;
 	export let onClose: () => void = () => {};
 
 	const STORAGE_KEY = 'cojo:lastAgent';
@@ -100,7 +102,7 @@
 		view = initialView;
 	});
 
-	$: if (open) view = initialView;
+	$: if (open) view = apiOnly ? 'api' : initialView;
 
 	$: if (typeof document !== 'undefined') {
 		document.body.style.overflow = open ? 'hidden' : '';
@@ -148,7 +150,7 @@
 				<div class="toolbar">
 					{#if view === 'agents'}
 						<AgentSelect value={agent} onChange={handleAgentChange} />
-					{:else}
+					{:else if !apiOnly}
 						<button
 							type="button"
 							class="toolbar-btn back"
@@ -170,17 +172,19 @@
 							<Eye size={13} />
 							<span>Docs</span>
 						</a>
-						<button
-							type="button"
-							class="toolbar-btn"
-							class:active={view === 'api'}
-							aria-pressed={view === 'api'}
-							on:click={() => (view = view === 'api' ? 'agents' : 'api')}
-							title="REST API reference"
-						>
-							<Code2 size={13} />
-							<span>API</span>
-						</button>
+						{#if !apiOnly}
+							<button
+								type="button"
+								class="toolbar-btn"
+								class:active={view === 'api'}
+								aria-pressed={view === 'api'}
+								on:click={() => (view = view === 'api' ? 'agents' : 'api')}
+								title="REST API reference"
+							>
+								<Code2 size={13} />
+								<span>API</span>
+							</button>
+						{/if}
 					</div>
 				</div>
 

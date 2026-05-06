@@ -122,6 +122,19 @@ Required local browser env contract:
 
 Production auth still uses `backend/app/routers/muckrock_proxy.py` to preserve the MuckRock-registered hosted callback/webhook URLs and forward to Supabase Edge Functions.
 
+Production SaaS is also still a Supabase deployment:
+
+- `PUBLIC_DEPLOYMENT_TARGET=supabase`
+- `PUBLIC_MUCKROCK_ENABLED=true`
+- `frontend/src/lib/stores/auth.ts` must therefore keep resolving to
+  `auth-supabase.ts`
+- `auth-supabase.ts -> login()` must route through the MuckRock broker when
+  `PUBLIC_MUCKROCK_ENABLED=true`
+
+Do not "simplify" this by switching hosted production to `auth-muckrock.ts` or
+by making `auth-supabase.ts -> login()` always redirect to `/login`. That breaks
+the production MuckRock OAuth start path.
+
 Do NOT:
 
 - make daily local auth depend on `supabase functions serve auth-muckrock`

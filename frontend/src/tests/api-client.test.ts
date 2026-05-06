@@ -11,7 +11,7 @@ vi.mock('$lib/config/api', () => ({
 	buildFastApiUrl: (path: string) => `/api${path.startsWith('/') ? path : '/' + path}`
 }));
 
-import { apiClient, submitFeedback } from '$lib/api-client';
+import { apiClient, apiRequest, submitFeedback } from '$lib/api-client';
 
 // ---- Test helpers ----
 
@@ -441,6 +441,26 @@ describe('submitFeedback', () => {
 				headers: expect.objectContaining({ 'Content-Type': 'application/json' })
 			})
 		);
+	});
+});
+
+// ===========================================================================
+// apiRequest
+// ===========================================================================
+
+describe('apiRequest', () => {
+	it('does not try to parse JSON for 204 No Content responses', async () => {
+		const json = vi.fn();
+		fetchSpy = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 204,
+			json,
+			text: vi.fn()
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		await expect(apiRequest('DELETE', '/api-keys/key_1')).resolves.toBeUndefined();
+		expect(json).not.toHaveBeenCalled();
 	});
 });
 
