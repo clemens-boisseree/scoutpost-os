@@ -1,10 +1,10 @@
-# coJournalist
+# Scoutpost
 
 AI-powered local news monitoring platform.
 
 ## Overview
 
-coJournalist lets users create "scouts" that monitor:
+Scoutpost lets users create "scouts" that monitor:
 - **Web pages** for content changes
 - **Local news** for daily digests
 - **Search queries** for specific topics
@@ -48,8 +48,8 @@ cd backend && python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 
-# CLI (cojo)
-cd cli && deno task run -- --help
+# CLI (scout)
+cd cli && deno task run --help
 ```
 
 ### Environment Variables
@@ -75,7 +75,7 @@ before merge.
 - [FastAPI endpoints (legacy + auth + v1)](docs/architecture/fastapi-endpoints.md)
 - [Supabase Edge Functions](docs/supabase/edge-functions.md)
 - [Developer guide](docs/architecture/developer-guide.md)
-- [`cojo` CLI](cli/README.md)
+- [`scout` CLI](cli/README.md)
 
 ## Project Structure
 
@@ -83,7 +83,7 @@ before merge.
 ├── frontend/        # SvelteKit SPA
 ├── backend/         # FastAPI service (auth, feedback, admin, /api/v1)
 ├── supabase/        # Edge Functions + migrations + pg_cron
-├── cli/             # `cojo` Deno CLI — talks to FastAPI or EFs
+├── cli/             # `scout` Deno CLI — talks to FastAPI or EFs
 ├── docs/            # Architecture + features + supabase docs
 ├── scripts/         # OSS strip + EF bundler + helpers
 └── Dockerfile       # Production build for the FastAPI service

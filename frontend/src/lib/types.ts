@@ -1,5 +1,5 @@
 /**
- * Type Definitions -- shared TypeScript types for the coJournalist frontend.
+ * Type Definitions -- shared TypeScript types for the Scoutpost frontend.
  *
  * USED BY: api-client.ts, stores/auth.ts, stores/location.ts,
  *          stores/notifications.ts, stores/pulse.ts, stores/recent-locations.ts,

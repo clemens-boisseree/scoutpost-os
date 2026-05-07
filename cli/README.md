@@ -1,6 +1,6 @@
-# cojo — coJournalist v2 CLI
+# scout — Scoutpost CLI
 
-Command-line tool for coJournalist v2. Speaks the REST API using a `cj_...` API
+Command-line tool for Scoutpost. Speaks the REST API using a `cj_...` API
 key or legacy JWT bearer token.
 
 ## Install
@@ -10,13 +10,13 @@ key or legacy JWT bearer token.
 Requires [Deno](https://deno.com) v2.x on `$PATH`.
 
 ```bash
-deno install -A -g -n cojo https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/cojo.ts
+deno install -A -g -n scout https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/scout.ts
 ```
 
 Verify install:
 
 ```bash
-cojo --version
+scout --version
 ```
 
 ### Build a local binary
@@ -27,14 +27,14 @@ If you want a self-contained executable instead of a Deno shim:
 git clone https://github.com/buriedsignals/cojournalist-os.git
 cd cojournalist-os/cli
 deno task compile-mac-arm        # or compile-mac-x86 on Intel
-sudo mv dist/cojo-darwin-arm64 /usr/local/bin/cojo
-sudo chmod +x /usr/local/bin/cojo
+sudo mv dist/scout-darwin-arm64 /usr/local/bin/scout
+sudo chmod +x /usr/local/bin/scout
 ```
 
 Verify:
 
 ```bash
-cojo --version
+scout --version
 ```
 
 ### Release binaries
@@ -49,24 +49,24 @@ Coming soon.
 
 ## Configure
 
-Config lives at `~/.cojournalist/config.json`. Set an api_url and **either** an
+Config lives at `~/.scoutpost/config.json`. Set an api_url and **either** an
 `api_key` (preferred — generated in the app at /api → Agents → API → Create key)
 or a legacy `auth_token` JWT.
 
 ```bash
-# Hosted coJournalist — recommended
-cojo config set api_url=https://www.cojournalist.ai/functions/v1
-cojo config set api_key=cj_xxxxxxxxxxxxxxxxxx
-cojo config set supabase_anon_key=<SUPABASE_ANON_KEY>
+# Hosted Scoutpost — recommended
+scout config set api_url=https://www.scoutpost.ai/functions/v1
+scout config set api_key=cj_xxxxxxxxxxxxxxxxxx
+scout config set supabase_anon_key=<SUPABASE_ANON_KEY>
 
 # Self-hosted Supabase Edge Functions
-cojo config set api_url=https://<project-ref>.supabase.co
-cojo config set api_key=cj_xxxxxxxxxxxxxxxxxx
-cojo config set supabase_anon_key=<SUPABASE_ANON_KEY>
+scout config set api_url=https://<project-ref>.supabase.co
+scout config set api_key=cj_xxxxxxxxxxxxxxxxxx
+scout config set supabase_anon_key=<SUPABASE_ANON_KEY>
 
 # Legacy JWT path
-cojo config set auth_token=<JWT>          # paste from browser devtools if needed
-cojo config show
+scout config set auth_token=<JWT>          # paste from browser devtools if needed
+scout config show
 ```
 
 ### Auth precedence
@@ -89,40 +89,40 @@ No OAuth flow in the CLI — tokens are pasted manually.
 
 ```bash
 # Projects
-cojo projects list
-cojo projects add --name "City Hall Watch" --visibility private
+scout projects list
+scout projects add --name "City Hall Watch" --visibility private
 
 # Scouts
-cojo scouts list
-cojo scouts add --name "Council agenda" --type web --url https://example.gov \
+scout scouts list
+scout scouts add --name "Council agenda" --type web --url https://example.gov \
   --topic "council, agenda"
-cojo scouts add --name "Housing minutes" --type civic \
+scout scouts add --name "Housing minutes" --type civic \
   --root-domain example.gov \
   --tracked-urls https://example.gov/minutes,https://example.gov/agendas \
   --topic "housing, council" \
   --description "Monthly council-minutes monitor for housing policy." \
   --criteria "housing policy votes" --regularity monthly --time 08:00 --day 1
-cojo scouts add --name "Local climate beat" --type beat \
+scout scouts add --name "Local climate beat" --type beat \
   --topic "climate, adaptation" \
   --criteria "local policy decisions with budget or timeline impacts" \
   --location-json '{"displayName":"Bergen, Norway","latitude":60.39,"longitude":5.32}' \
   --source-mode niche --priority-sources examplelocal.no
-cojo scouts run <id>
+scout scouts run <id>
 
 # Information units
-cojo units list --verified
-cojo units show <id>
-cojo units verify <id> --notes "Cross-checked with minutes" --by "Tom"
-cojo units search --query "zoning variance"
+scout units list --verified
+scout units show <id>
+scout units verify <id> --notes "Cross-checked with minutes" --by "Tom"
+scout units search --query "zoning variance"
 
 # Ingest a URL or stdin text
-cojo ingest url https://example.com/article --project <id>
-echo "raw notes" | cojo ingest text --title "Field notes"
+scout ingest url https://example.com/article --project <id>
+echo "raw notes" | scout ingest text --title "Field notes"
 
 # Search and manage units directly
-cojo units search --query "zoning variance" --mode hybrid --project <id>
-cojo units mark-used <id> --url https://example.com/story
-cojo units delete <id>
+scout units search --query "zoning variance" --mode hybrid --project <id>
+scout units mark-used <id> --url https://example.com/story
+scout units delete <id>
 ```
 
 Topic tags are for organization and UI filtering. Use 1-3 short comma-separated
@@ -131,10 +131,10 @@ or notification rules in `--criteria`. A scout must have either topic tags or a
 location.
 
 When you create a scheduled scout (`--cron` or `--regularity` + `--time`), the
-server establishes the initial baseline before scheduling it. `cojo scouts run`
+server establishes the initial baseline before scheduling it. `scout scouts run`
 compares against that baseline and will not create the first baseline itself.
 
-Run `cojo <command> --help` for subcommand-specific usage.
+Run `scout <command> --help` for subcommand-specific usage.
 
 ## Development
 

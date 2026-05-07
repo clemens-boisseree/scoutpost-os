@@ -10,7 +10,7 @@ What each failure mode looks like and how to triage.
 | Connector card defaults to **Configure** instead of **Connect** (no disconnect/reconnect dance fixes it) | Anthropic-side cached state from a prior failed attempt                                | Disconnect → Remove → quit app → re-add. If still wrong, `curl -I https://<host>/mcp` should return `401`; if it returns `200`, the HEAD auth gate is missing                                                         |
 | Connect runs OAuth but tools list is empty                                                               | Missing scopes, or `tools/list` returns 401 inside HTTP 200                            | `curl -i -X POST https://<host>/mcp -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'` — must be HTTP 401 with `WWW-Authenticate: Bearer`, not 200 with a JSON-RPC error inside |
 | `initialize` succeeds but next request fails with "session expired"                                      | Server is generating a fresh session_id per request                                    | Sessions are stateless — this server doesn't issue session_ids. If a client demands one, return a stable per-bearer hash                                                                                              |
-| OAuth runs but ends on a non-redirecting page on cojournalist.ai                                         | Old client-side HTML bounce path is still serving / `/authorize-callback` route exists | The 2026-05-04 server-side mint flow eliminates the bounce. If a client lands on a `/authorize-callback` URL, the broker isn't using the new `mcp-auth` function                                                      |
+| OAuth runs but ends on a non-redirecting page on scoutpost.ai                                         | Old client-side HTML bounce path is still serving / `/authorize-callback` route exists | The 2026-05-04 server-side mint flow eliminates the bounce. If a client lands on a `/authorize-callback` URL, the broker isn't using the new `mcp-auth` function                                                      |
 | `redirect URL not allowed` on the Supabase verify endpoint                                               | `PUBLIC_APP_URL` is not on Supabase Auth's allowlist                                   | Dashboard → Authentication → URL Configuration → Redirect URLs → add the app origin used by `PUBLIC_APP_URL`                                                                                                          |
 | Token exchange returns `invalid_grant`                                                                   | Code was already used, expired (>10min), or PKCE verifier doesn't match the challenge  | Check `mcp_oauth_codes` row: `used_at` non-null = replay; `expires_at < NOW()` = expired                                                                                                                              |
 | Connector works on Cowork but fails in Codex Desktop                                                     | Codex defaulted to STDIO tab in the connect dialog                                     | Switch to the **Streamable HTTP** tab; STDIO doesn't apply to remote servers                                                                                                                                          |
@@ -35,9 +35,9 @@ before the user clicks anything. The decision logic, in priority order:
 Quick verification:
 
 ```bash
-$ curl -I https://www.cojournalist.ai/mcp
+$ curl -I https://www.scoutpost.ai/mcp
 HTTP/2 401
-www-authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://www.cojournalist.ai/mcp/.well-known/oauth-protected-resource"
+www-authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://www.scoutpost.ai/mcp/.well-known/oauth-protected-resource"
 mcp-protocol-version: 2025-06-18
 allow: POST, HEAD, OPTIONS
 ```

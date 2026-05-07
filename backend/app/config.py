@@ -116,8 +116,10 @@ class Settings(BaseSettings):
         "http://localhost:5173",  # SvelteKit dev
         "http://localhost:7860",  # HF Spaces local
         "https://cojournalist.onrender.com",  # Production backend
-        "https://cojournalist.ai",  # Production frontend
-        "https://www.cojournalist.ai",  # Production frontend (www)
+        "https://scoutpost.ai",  # Production frontend (apex)
+        "https://www.scoutpost.ai",  # Production frontend (www)
+        "https://cojournalist.ai",  # Legacy migration origin
+        "https://www.cojournalist.ai",  # Legacy migration origin (www)
     ]
 
 # Global settings instance

@@ -1,27 +1,27 @@
 ---
-name: cojournalist-setup
+name: scoutpost-setup
 description: >
-  Install, self-host, configure, or validate coJournalist for hosted SaaS or
+  Install, self-host, configure, or validate Scoutpost for hosted SaaS or
   self-hosted deployments, including MCP and CLI setup.
 ---
 
-# coJournalist setup skill
+# Scoutpost setup skill
 
 Use this when the user wants to install, self-host, configure, or validate
-coJournalist. For day-to-day newsroom use, prefer the product skill at
-`https://www.cojournalist.ai/skills/cojournalist.md`.
+Scoutpost. For day-to-day newsroom use, prefer the product skill at
+`https://www.scoutpost.ai/skills/cojournalist.md`.
 
 ## Public surfaces
 
-For hosted SaaS, the public app is `https://www.cojournalist.ai`.
+For hosted SaaS, the public app is `https://www.scoutpost.ai`.
 
 For self-hosted deployments, use the newsroom's own deployed app URL and the
 Supabase/API/MCP targets generated during setup. Do not point newsroom agents at
-the hosted cojournalist.ai Supabase project.
+the hosted scoutpost.ai Supabase project.
 
 ## Hosted agent setup
 
-1. Open coJournalist and create a `cj_...` API key from the Agents API panel.
+1. Open Scoutpost and create a `cj_...` API key from the Agents API panel.
 2. Configure the agent to use either MCP or the CLI.
 3. Verify with a read-only operation first: list scouts or list units.
 4. Do not run scouts or create scheduled monitors until the user confirms credit
@@ -34,19 +34,19 @@ Use Deno 2.x to install directly from the public mirror:
 Hosted example:
 
 ```bash
-deno install -A -g -n cojo https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/cojo.ts
-cojo config set api_url=https://www.cojournalist.ai/functions/v1
-cojo config set api_key=<cj_... API key>
-cojo scouts list
+deno install -A -g -n scout https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/scout.ts
+scout config set api_url=https://www.scoutpost.ai/functions/v1
+scout config set api_key=<cj_... API key>
+scout scouts list
 ```
 
 Self-hosted example:
 
 ```bash
-cojo config set api_url=https://<project-ref>.supabase.co/functions/v1
-cojo config set supabase_anon_key=<SUPABASE_ANON_KEY>
-cojo config set api_key=<cj_... API key>
-cojo scouts list
+scout config set api_url=https://<project-ref>.supabase.co/functions/v1
+scout config set supabase_anon_key=<SUPABASE_ANON_KEY>
+scout config set api_key=<cj_... API key>
+scout scouts list
 ```
 
 ## MCP setup
@@ -54,14 +54,14 @@ cojo scouts list
 Hosted remote MCP endpoint:
 
 ```text
-https://www.cojournalist.ai/mcp
+https://www.scoutpost.ai/mcp
 ```
 
 The MCP server uses OAuth discovery at:
 
 ```text
-https://www.cojournalist.ai/mcp/.well-known/oauth-authorization-server
-https://www.cojournalist.ai/mcp/.well-known/oauth-protected-resource
+https://www.scoutpost.ai/mcp/.well-known/oauth-authorization-server
+https://www.scoutpost.ai/mcp/.well-known/oauth-protected-resource
 ```
 
 If OAuth is unavailable in the client, use a `cj_...` API key through the CLI or
@@ -150,4 +150,4 @@ Before merging upstream:
 
 ## Canonical location
 
-Canonical URL: `https://www.cojournalist.ai/skills/cojournalist-setup.md`
+Canonical URL: `https://www.scoutpost.ai/skills/cojournalist-setup.md`

@@ -32,8 +32,8 @@ import { buildBaseHtml } from "../_shared/notifications.ts";
 import { getString } from "../_shared/email_translations.ts";
 
 const RESEND_URL = "https://api.resend.com/emails";
-const FROM = "coJournalist <info@cojournalist.ai>";
-const REPLY_TO = "info@cojournalist.ai";
+const FROM = "Scoutpost <alerts@scoutpost.ai>";
+const REPLY_TO = "updates@scoutpost.ai";
 const DEFAULT_TO = "tom@buriedsignals.com";
 const DEFAULT_TYPES = ["page", "beat", "civic", "social"] as const;
 

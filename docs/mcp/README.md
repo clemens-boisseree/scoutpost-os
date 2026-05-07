@@ -1,6 +1,6 @@
-# MCP — coJournalist remote MCP server
+# MCP — Scoutpost remote MCP server
 
-Public, OAuth-protected MCP server at `https://www.cojournalist.ai/mcp`. MCP clients (Claude Cowork, Claude Desktop, claude.ai, Codex Desktop, Cursor, Windsurf, Gemini CLI, Goose, Hermes) connect via Streamable HTTP, authenticate via OAuth 2.1 + RFC 7591 Dynamic Client Registration + PKCE, and call JSON-RPC tools that fan out to the rest of the platform (units search, scout management, project ingest).
+Public, OAuth-protected MCP server at `https://www.scoutpost.ai/mcp`. MCP clients (Claude Cowork, Claude Desktop, claude.ai, Codex Desktop, Cursor, Windsurf, Gemini CLI, Goose, Hermes) connect via Streamable HTTP, authenticate via OAuth 2.1 + RFC 7591 Dynamic Client Registration + PKCE, and call JSON-RPC tools that fan out to the rest of the platform (units search, scout management, project ingest).
 
 **Spec versions:**
 - MCP Authorization spec `2025-06-18` (Streamable HTTP)
@@ -25,13 +25,13 @@ Public, OAuth-protected MCP server at `https://www.cojournalist.ai/mcp`. MCP cli
 
 - [`docs/supabase/mcp-oauth.md`](../supabase/mcp-oauth.md) — DB tables (`mcp_oauth_clients`, `mcp_oauth_codes`) + cleanup cron
 - [`docs/supabase/edge-functions.md`](../supabase/edge-functions.md) — Edge Function inventory
-- [`mcp/CLAUDE.md`](../../mcp/CLAUDE.md) — `cojo-mcp` stdio bridge (legacy local-stdio path; superseded by the remote server for hosted clients)
+- [`mcp/CLAUDE.md`](../../mcp/CLAUDE.md) — `scout-mcp` stdio bridge (legacy local-stdio path; superseded by the remote server for hosted clients)
 - [`MCP_SPECFILE.md`](../../MCP_SPECFILE.md) — frozen session debug log from the 2026-05-05 OAuth bring-up; untracked, kept for the next person
 
 ## 30-second overview
 
 ```
-MCP client                    cojournalist.ai/mcp                   Supabase EF
+MCP client                    scoutpost.ai/mcp                   Supabase EF
 ─────────                     ──────────────────                    ──────────────
 HEAD /                        →  401 + WWW-Authenticate            ─►  mcp-server
 GET /.well-known/oauth-…/mcp  →  200 JSON metadata                     mcp-server
@@ -53,7 +53,7 @@ The whole point: the user pastes the URL, clicks Connect, and OAuth runs. No cli
 - **claude.ai** chat with custom connector — same.
 - **Claude Code** (`claude mcp add --transport http`) — opens local browser for OAuth (different surface, same server).
 - **Codex Desktop** — Streamable HTTP tab + native OAuth handshake.
-- **codex-cli** — `codex mcp login cojournalist` after a `[mcp_servers.cojournalist]` block in `~/.codex/config.toml`.
+- **codex-cli** — `codex mcp login scoutpost` after a `[mcp_servers.scoutpost]` block in `~/.codex/config.toml`.
 - **Cursor / Windsurf / Gemini CLI / Goose / Hermes** — config-file paths described in [`clients.md`](clients.md).
 
 ChatGPT is **not** supported as a self-serve target — OpenAI gates custom MCP to Business/Enterprise/Edu plans, useless for individual journalists.

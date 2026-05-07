@@ -24,22 +24,22 @@ jobs:
           # rationale (Apple notary stalls + 10× runner billing multiplier).
           - os: macos-latest
             target: aarch64-apple-darwin
-            asset: cojo-mcp-darwin-arm64
+            asset: scout-mcp-darwin-arm64
             task: compile-mac-arm
             required: false
           - os: macos-13
             target: x86_64-apple-darwin
-            asset: cojo-mcp-darwin-x86_64
+            asset: scout-mcp-darwin-x86_64
             task: compile-mac-x86
             required: false
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            asset: cojo-mcp-linux-x86_64
+            asset: scout-mcp-linux-x86_64
             task: compile-linux-x86
             required: true
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-            asset: cojo-mcp-linux-arm64
+            asset: scout-mcp-linux-arm64
             task: compile-linux-arm
             required: true
     runs-on: ${{ matrix.os }}

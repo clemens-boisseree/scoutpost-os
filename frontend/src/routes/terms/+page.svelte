@@ -2,17 +2,22 @@
 	// Public page — no auth required
 </script>
 
+<svelte:head>
+	<title>Terms & Privacy — Scoutpost</title>
+	<meta name="description" content="Scoutpost terms of use and privacy policy for hosted and self-hosted newsroom deployments." />
+</svelte:head>
+
 <div class="terms-page">
 	<div class="terms-content">
-		<a href="/" class="back-link">&larr; Back to coJournalist</a>
+		<a href="/" class="back-link">&larr; Back to Scoutpost</a>
 
 		<h1>Terms of Use & Privacy Policy</h1>
-		<p class="updated">Last updated: April 1, 2026</p>
+		<p class="updated">Last updated: May 7, 2026</p>
 
 		<section>
-			<h2>What coJournalist Is</h2>
+			<h2>What Scoutpost Is</h2>
 			<p>
-				coJournalist is an AI-powered research assistant for journalists. It monitors websites, local news sources, social media, and government documents on your behalf, and delivers findings via email and dashboard.
+				Scoutpost, formerly coJournalist, is an AI-powered research assistant for journalists. It monitors websites, local news sources, social media, and government documents on your behalf, and delivers findings via email and dashboard.
 			</p>
 			<p>
 				<strong>It is not a news source.</strong> All content displayed in the dashboard, delivered via email, and generated in export drafts is produced or processed by artificial intelligence. This includes extracted facts, article summaries, translated titles, filtered search results, and draft articles.
@@ -22,7 +27,7 @@
 		<section>
 			<h2>AI Content &mdash; Read This</h2>
 			<p>
-				AI-generated content may contain errors, omissions, hallucinations, or misattributions. coJournalist does not verify the accuracy of extracted information. Specifically:
+				AI-generated content may contain errors, omissions, hallucinations, or misattributions. Scoutpost does not verify the accuracy of extracted information. Specifically:
 			</p>
 			<ul>
 				<li>Extracted facts may be incomplete, taken out of context, or wrong</li>
@@ -32,7 +37,7 @@
 				<li>Source reliability varies &mdash; community and independent sources have no editorial oversight</li>
 			</ul>
 			<p>
-				<strong>You are solely responsible for independently verifying all information before publication.</strong> Treat coJournalist output as unverified leads, not confirmed reporting. We are not liable for editorial decisions made based on AI-generated content.
+				<strong>You are solely responsible for independently verifying all information before publication.</strong> Treat Scoutpost output as unverified leads, not confirmed reporting. We are not liable for editorial decisions made based on AI-generated content.
 			</p>
 		</section>
 
@@ -42,7 +47,7 @@
 				When you provide URLs for Page Scout monitoring, council domains for Civic Scout, or social media handles for Social Scout, you are responsible for ensuring your use complies with the target website's terms of service.
 			</p>
 			<p>
-				coJournalist respects robots.txt directives but cannot verify site-specific restrictions. Page Scouts make one request per scheduled interval (minimum hourly). Civic Scouts process at most 2 documents per run. Social Scouts rely on third-party scrapers subject to platform terms.
+				Scoutpost respects robots.txt directives but cannot verify site-specific restrictions. Page Scouts make one request per scheduled interval (minimum hourly). Civic Scouts process at most 2 documents per run. Social Scouts rely on third-party scrapers subject to platform terms.
 			</p>
 			<p>
 				You agree not to attempt prompt injection, abuse rate limits, or use the service to generate or amplify misinformation.
@@ -52,24 +57,24 @@
 		<section>
 			<h2>No Warranty</h2>
 			<p>
-				coJournalist is provided "as is" without warranty of any kind. We do not guarantee completeness of search results, accuracy of translations, availability of social media scraping (platform changes may cause failures), or continuity of any feature or data source.
+				Scoutpost is provided "as is" without warranty of any kind. We do not guarantee completeness of search results, accuracy of translations, availability of social media scraping (platform changes may cause failures), or continuity of any feature or data source.
 			</p>
 			<p>
-				AI filtering may exclude relevant articles. The system searches a subset of available sources. Important stories may be missed. coJournalist supplements but does not replace your own monitoring and sourcing.
+				AI filtering may exclude relevant articles. The system searches a subset of available sources. Important stories may be missed. Scoutpost supplements but does not replace your own monitoring and sourcing.
 			</p>
 		</section>
 
 		<section>
 			<h2>Intellectual Property</h2>
 			<p>
-				You own the content you create using coJournalist's export feature. AI-generated drafts are tools for your editorial process &mdash; we claim no rights over your published work.
+				You own the content you create using Scoutpost's export feature. AI-generated drafts are tools for your editorial process &mdash; we claim no rights over your published work.
 			</p>
 		</section>
 
 		<section>
 			<h2>Account & Deletion</h2>
 			<p>
-				Your account is authenticated via Supabase Auth. Email and password handling are managed by your Supabase deployment. To delete your account and all associated data, contact the maintainer of your deployment. Deletion is completed within 30 days.
+				Hosted Scoutpost accounts authenticate through Supabase. Self-hosted deployments use the authentication setup configured by the newsroom. To delete your account and all associated data, contact the maintainer of your deployment. Deletion is completed within 30 days.
 			</p>
 		</section>
 
@@ -151,7 +156,7 @@
 		<section>
 			<h2>Cookies</h2>
 			<p>
-				coJournalist uses the authentication storage mechanism configured by Supabase Auth for your deployment. Depending on your setup, this may include secure cookies or browser-managed session storage.
+				Scoutpost uses the authentication storage mechanism configured for your deployment. Depending on your setup, this may include secure cookies or browser-managed session storage.
 			</p>
 			<p>
 				We do not use analytics, tracking, or advertising cookies.

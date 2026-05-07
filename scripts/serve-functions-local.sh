@@ -14,8 +14,8 @@ if [[ ! -f .env ]]; then
   exit 2
 fi
 
-STATUS_ENV_FILE="$(mktemp /tmp/cojo-status-env.XXXXXX)"
-RUNTIME_ENV_FILE="$(mktemp /tmp/cojo-functions-env.XXXXXX)"
+STATUS_ENV_FILE="$(mktemp /tmp/scout-status-env.XXXXXX)"
+RUNTIME_ENV_FILE="$(mktemp /tmp/scout-functions-env.XXXXXX)"
 
 cleanup() {
   rm -f "$STATUS_ENV_FILE" "$RUNTIME_ENV_FILE"

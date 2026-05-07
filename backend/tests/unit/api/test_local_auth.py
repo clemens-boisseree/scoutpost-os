@@ -18,7 +18,7 @@ def _settings():
         email_allowlist="",
         supabase_url="https://proj.supabase.co",
         supabase_service_key="service-role-key",
-        app_post_login_redirect="https://www.cojournalist.ai/auth/callback",
+        app_post_login_redirect="https://www.scoutpost.ai/auth/callback",
     )
 
 
@@ -99,7 +99,7 @@ def test_login_rejects_non_local_post_login_redirect(monkeypatch):
 
     client = _mount()
     res = client.get(
-        "/api/auth/login?post_login_redirect=https://cojournalist.ai/auth/callback",
+        "/api/auth/login?post_login_redirect=https://www.scoutpost.ai/auth/callback",
     )
 
     assert res.status_code == 400
@@ -114,7 +114,7 @@ def test_callback_rewrites_magiclink_back_to_localhost(monkeypatch):
         return fake_supabase
 
     async def _resolve(_action_link: str):
-        return "https://www.cojournalist.ai/auth/callback?type=magiclink#access_token=aaa&refresh_token=bbb"
+        return "https://www.scoutpost.ai/auth/callback?type=magiclink#access_token=aaa&refresh_token=bbb"
 
     monkeypatch.setattr(local_auth, "get_settings", _settings)
     monkeypatch.setattr(local_auth, "_get_muckrock", lambda: fake_muckrock)
@@ -134,4 +134,4 @@ def test_callback_rewrites_magiclink_back_to_localhost(monkeypatch):
 
     admin_calls = fake_supabase.auth.admin
     assert admin_calls.created_users[0]["email"] == "reporter@example.com"
-    assert admin_calls.generate_link_calls[0]["options"]["redirect_to"] == "https://www.cojournalist.ai/auth/callback"
+    assert admin_calls.generate_link_calls[0]["options"]["redirect_to"] == "https://www.scoutpost.ai/auth/callback"

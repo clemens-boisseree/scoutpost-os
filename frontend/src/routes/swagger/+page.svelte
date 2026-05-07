@@ -10,7 +10,13 @@
 	const origin = typeof window !== 'undefined' ? window.location.origin : '';
 	const hostedBroker =
 		typeof window !== 'undefined' &&
-		['cojournalist.ai', 'www.cojournalist.ai', 'cojournalist.onrender.com'].includes(
+		[
+			'scoutpost.ai',
+			'www.scoutpost.ai',
+			'cojournalist.ai',
+			'www.cojournalist.ai',
+			'cojournalist.onrender.com'
+		].includes(
 			window.location.hostname
 		);
 	const specUrl = hostedBroker
@@ -82,12 +88,12 @@
 </script>
 
 <svelte:head>
-	<title>coJournalist — API Reference</title>
+	<title>Scoutpost — API Reference</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
 <nav class="topbar">
-	<a class="back" href="/">&larr; Back to coJournalist</a>
+	<a class="back" href="/">&larr; Back to Scoutpost</a>
 	<a class="raw" href={specUrl} target="_blank" rel="noopener noreferrer">Raw OpenAPI JSON</a>
 </nav>
 

@@ -398,7 +398,7 @@ The public OSS repo is created via `gh`, and the Sustainable Use License (modele
 gh repo create buriedsignals/cojournalist-os \
   --public \
   --description "AI-powered local news monitoring for newsrooms. Self-hosted on Supabase." \
-  --homepage "https://www.cojournalist.ai"
+  --homepage "https://www.scoutpost.ai"
 ```
 
 Expected: `https://github.com/buriedsignals/cojournalist-os`

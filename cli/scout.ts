@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env --allow-read --allow-write
-// cojo — coJournalist v2 CLI
+// scout — Scoutpost CLI
 // Entry point: dispatches subcommands to commands/<name>.ts
 
 import * as config from "./commands/config.ts";
@@ -35,19 +35,19 @@ const COMMANDS: Record<
 
 function printUsage(): void {
   const lines = [
-    "cojo — coJournalist v2 CLI",
+    "scout — Scoutpost CLI",
     "",
-    "Usage: cojo <command> [args...]",
+    "Usage: scout <command> [args...]",
     "",
     "Commands:",
-    "  config     Manage ~/.cojournalist/config.json (api_url, api_key, auth_token)",
+    "  config     Manage ~/.scoutpost/config.json (api_url, api_key, auth_token)",
     "  projects   List, add, show, delete projects",
     "  scouts     List, add, show, update, run, pause, resume, delete scouts",
     "  units      List, show, verify, reject, mark-used, search information units",
     "  user       Show current user account state",
     "  ingest     Ingest a URL or raw text into the knowledge base",
     "",
-    "Run `cojo <command> --help` for command-specific usage.",
+    "Run `scout <command> --help` for command-specific usage.",
   ];
   console.log(lines.join("\n"));
 }
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
   const [cmd, ...rest] = Deno.args;
 
   if (cmd === "--version" || cmd === "-v") {
-    console.log(`cojo ${VERSION}`);
+    console.log(`scout ${VERSION}`);
     Deno.exit(0);
   }
 

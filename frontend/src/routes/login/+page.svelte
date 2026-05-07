@@ -133,10 +133,10 @@
 				<div class="auth-shell">
 					<div class="auth-card">
 						{#if notAvailable}
-							<img src="/logo-cojournalist.svg" alt="coJournalist" class="auth-logo" />
+							<img src="/logo-cojournalist.svg" alt="Scoutpost" class="auth-logo" />
 							<p class="coming-soon-title">Coming Soon</p>
 							<p class="coming-soon-text">
-								coJournalist is not currently available for new signups. We'll notify you when access opens up.
+								Scoutpost is not currently available for new signups. We'll notify you when access opens up.
 							</p>
 						{:else}
 							{#if showSupabaseAuth()}
@@ -221,7 +221,7 @@
 				PUBLIC BETA
 			</div>
 
-			<img src="/logo-cojournalist.svg" alt="coJournalist" class="headline-logo" />
+			<img src="/logo-cojournalist.svg" alt="Scoutpost" class="headline-logo" />
 
 			<p class="tagline">
 				Let your AI monitor the
@@ -320,7 +320,7 @@
 						</div>
 						<div>
 							<p class="feature-title">A newsroom database, not a chat log</p>
-							<p class="feature-desc">Your AI queries coJournalist by place, person, topic, or date — and hands you clean, cite-able units ready to use.</p>
+							<p class="feature-desc">Your AI queries Scoutpost by place, person, topic, or date — and hands you clean, cite-able units ready to use.</p>
 						</div>
 					</div>
 
@@ -446,7 +446,7 @@
 						<ul class="promo-features">
 							<li>Collaborative investigations — shared leads, data, and methodology</li>
 							<li>Live bootcamps, workshops, and events</li>
-							<li>Hosted Pro tier of the agent extensions — coJournalist, Navigator, Spotlight, DataHound</li>
+							<li>Hosted Pro tier of the agent extensions — Scoutpost, Navigator, Spotlight, DataHound</li>
 							<li>Investigation methodologies and AI techniques, in depth</li>
 						</ul>
 						<div class="promo-action promo-action--stack">

@@ -24,8 +24,8 @@ Create a Stripe Product with an annual Price. The Checkout Session embeds `clien
 session = stripe.checkout.Session.create(
     mode="subscription",
     line_items=[{"price": ANNUAL_PRICE_ID, "quantity": 1}],
-    success_url="https://www.cojournalist.ai/license/success?session_id={CHECKOUT_SESSION_ID}",
-    cancel_url="https://www.cojournalist.ai/license/cancel",
+    success_url="https://www.scoutpost.ai/license/success?session_id={CHECKOUT_SESSION_ID}",
+    cancel_url="https://www.scoutpost.ai/license/cancel",
     subscription_data={
         "metadata": {"product": "cojournalist-license"}
     },
@@ -494,7 +494,7 @@ LICENSE_KEY="${COJOURNALIST_LICENSE_KEY:-}"
 
 if [ -z "$LICENSE_KEY" ]; then
     echo "Error: COJOURNALIST_LICENSE_KEY environment variable not set."
-    echo "Get your license key at https://www.cojournalist.ai/license"
+    echo "Get your license key at https://www.scoutpost.ai/license"
     exit 1
 fi
 
@@ -503,7 +503,7 @@ echo "Validating license..."
 RESPONSE=$(curl -s -X POST -w "\n%{http_code}" \
     -H "Content-Type: application/json" \
     -d "{\"key\": \"${LICENSE_KEY}\"}" \
-    "https://www.cojournalist.ai/api/license/validate" \
+    "https://www.scoutpost.ai/api/license/validate" \
     --max-time 10 2>/dev/null || echo -e "\n000")
 
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
@@ -524,7 +524,7 @@ elif [ "$HTTP_CODE" = "403" ]; then
 elif [ "$HTTP_CODE" = "000" ]; then
     # Network error or endpoint down — grace period
     echo "Warning: Could not reach license server. Proceeding with grace period."
-    echo "If this persists, check https://www.cojournalist.ai/status"
+    echo "If this persists, check https://www.scoutpost.ai/status"
     # Continue execution — don't block users because of a transient outage
 else
     echo "Unexpected response (HTTP ${HTTP_CODE}). Proceeding anyway."
@@ -560,7 +560,7 @@ jobs:
           HTTP_CODE=$(curl -s -X POST -o /tmp/license_response.json -w "%{http_code}" \
             -H "Content-Type: application/json" \
             -d "{\"key\": \"${COJOURNALIST_LICENSE_KEY}\"}" \
-            "https://www.cojournalist.ai/api/license/validate" \
+            "https://www.scoutpost.ai/api/license/validate" \
             --max-time 10 2>/dev/null || echo "000")
 
           if [ "$HTTP_CODE" = "200" ]; then
@@ -656,7 +656,7 @@ The `POST /api/license/validate` endpoint is public (no auth required — the ke
 1. Create a Product in Stripe: "coJournalist Annual License"
 2. Create a Price: annual recurring, set the amount
 3. Create a Checkout link or embed Checkout on the site
-4. Register webhook endpoint: `https://www.cojournalist.ai/api/license/webhook`
+4. Register webhook endpoint: `https://www.scoutpost.ai/api/license/webhook`
 5. Select events: `checkout.session.completed`, `invoice.paid`, `customer.subscription.deleted`, `invoice.payment_failed`
 6. Copy the webhook signing secret to Render env vars
 7. Add `STRIPE_SECRET_KEY` to Render env vars

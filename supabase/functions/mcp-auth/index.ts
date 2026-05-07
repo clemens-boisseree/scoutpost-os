@@ -6,7 +6,7 @@
  * directly back to the MCP client (claude.ai, Claude Desktop, Cowork).
  *
  * Why this shape (vs the magiclink-bounce design that landed in PR #152):
- * after deploy, the browser-bounce variant left users on cojournalist.ai
+ * after deploy, the browser-bounce variant left users on scoutpost.ai
  * without ever calling the claude.ai callback URL. The chain depended on
  * Supabase Auth's `redirectTo` parameter exact-matching an allowlist
  * entry, the magiclink succeeding, the browser following it back to

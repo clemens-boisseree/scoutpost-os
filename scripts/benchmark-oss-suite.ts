@@ -24,7 +24,7 @@ if (
   Deno.env.get("COJO_ALLOW_HOSTED_BENCHMARK") !== "1"
 ) {
   throw new Error(
-    "Refusing to run OSS benchmarks against hosted cojournalist.ai.",
+    "Refusing to run OSS benchmarks against hosted scoutpost.ai.",
   );
 }
 if (!supabaseUrl) throw new Error("Missing SUPABASE_URL or API_URL.");

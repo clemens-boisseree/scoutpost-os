@@ -1,10 +1,10 @@
-// cojo ingest — ingest URL or text into knowledge base
+// scout ingest — ingest URL or text into knowledge base
 import { apiFetch, parseArgs, printJSON } from "../lib/client.ts";
 
 function usage(): void {
   console.log(
     [
-      "Usage: cojo ingest <subcommand>",
+      "Usage: scout ingest <subcommand>",
       "",
       "  url <url> [--criteria <text>] [--project <id>]",
       "  text --title <title> [--criteria <text>] [--project <id>] [--file <path>]",
@@ -43,7 +43,7 @@ export async function run(argv: string[]): Promise<void> {
   if (sub === "url") {
     const url = positional[0];
     if (!url) {
-      console.error("Usage: cojo ingest url <url> [--criteria] [--project]");
+      console.error("Usage: scout ingest url <url> [--criteria] [--project]");
       Deno.exit(1);
     }
     const body: Record<string, unknown> = { kind: "url", url };

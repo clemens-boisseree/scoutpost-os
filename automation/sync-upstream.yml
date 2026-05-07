@@ -35,7 +35,7 @@ jobs:
       - name: Configure git
         run: |
           git config user.name "coJournalist Sync Bot"
-          git config user.email "sync@cojournalist.ai"
+          git config user.email "sync@scoutpost.ai"
 
       - name: Add upstream remote
         run: |

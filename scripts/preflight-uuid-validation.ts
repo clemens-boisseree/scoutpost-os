@@ -15,7 +15,7 @@
  *
  *   Optional:
  *     PREFLIGHT_UUID=<uuid>          (default 00000000-0000-0000-0000-000000000001)
- *     PREFLIGHT_EMAIL=<email>        (default preflight@cojournalist.ai)
+ *     PREFLIGHT_EMAIL=<email>        (default preflight@scoutpost.ai)
  *     PREFLIGHT_REDIRECT_TO=<url>    (default http://localhost:5173/auth/callback)
  *
  * Exit codes:
@@ -36,7 +36,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 
 const FIXED_UUID = Deno.env.get("PREFLIGHT_UUID") ??
   "00000000-0000-0000-0000-000000000001";
-const EMAIL = Deno.env.get("PREFLIGHT_EMAIL") ?? "preflight@cojournalist.ai";
+const EMAIL = Deno.env.get("PREFLIGHT_EMAIL") ?? "preflight@scoutpost.ai";
 const REDIRECT_TO = Deno.env.get("PREFLIGHT_REDIRECT_TO") ??
   "http://localhost:5173/auth/callback";
 

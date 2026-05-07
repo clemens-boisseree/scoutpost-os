@@ -1,7 +1,7 @@
 """Tests for EmailStaticFiles — the `/static/*` mount used by email images.
 
 `/static/*` exists so email templates can reference absolute URLs like
-`https://www.cojournalist.ai/static/logo-cojournalist.png` for Resend to
+`https://www.scoutpost.ai/static/logo-cojournalist.png` for Resend to
 fetch at send time. Without restrictions, mounting `FRONTEND_DIST` there
 would duplicate the entire SvelteKit build surface (`/static/_app/immutable/*`,
 `/static/index.html`, `/static/overview.txt`, etc.) — harmless content-wise

@@ -1,16 +1,16 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "coJournalist API",
+    "title": "Scoutpost API",
     "version": "2.1.0",
-    "description": "coJournalist v2 Edge Functions — the public HTTP surface used by the web UI, the `cojo` CLI, the `cojo-mcp` stdio bridge, and third-party agents. All endpoints live under `${SUPABASE_URL}/functions/v1/`. Authentication: `Authorization: Bearer <token>` where the token is either a Supabase user JWT (browser sessions) or a `cj_…` API key (agents, CI). When the host is a Supabase project, Kong additionally requires the `apikey: <anon_key>` header.",
+    "description": "Scoutpost Edge Functions — the public HTTP surface used by the web UI, the `scout` CLI, the `scout-mcp` stdio bridge, and third-party agents. All endpoints live under `${SUPABASE_URL}/functions/v1/`. Authentication: `Authorization: Bearer <token>` where the token is either a Supabase user JWT (browser sessions) or a `cj_…` API key (agents, CI). When the host is a Supabase project, Kong additionally requires the `apikey: <anon_key>` header.",
     "contact": {
-      "name": "coJournalist",
-      "url": "https://www.cojournalist.ai"
+      "name": "Scoutpost",
+      "url": "https://www.scoutpost.ai"
     }
   },
   "servers": [
-    { "url": "https://www.cojournalist.ai/functions/v1", "description": "Production" },
+    { "url": "https://www.scoutpost.ai/functions/v1", "description": "Production" },
     { "url": "/functions/v1", "description": "Relative (when proxied by the app)" }
   ],
   "security": [{ "bearerAuth": [], "anonKey": [] }],
@@ -394,7 +394,7 @@
       "post": {
         "tags": ["agents"],
         "summary": "MCP JSON-RPC 2.0 entry point (protocol 2024-11-05)",
-        "description": "Used by stdio bridges (cojo-mcp) and remote MCP clients. Request/response bodies follow the MCP spec. Use the OAuth metadata endpoint under this path (`/.well-known/oauth-authorization-server`) for client discovery.",
+        "description": "Used by stdio bridges (scout-mcp) and remote MCP clients. Request/response bodies follow the MCP spec. Use the OAuth metadata endpoint under this path (`/.well-known/oauth-authorization-server`) for client discovery.",
         "requestBody": { "required": true, "content": { "application/json": { "schema": {
           "type": "object",
           "required": ["jsonrpc", "method"],

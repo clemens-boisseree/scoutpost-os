@@ -3,11 +3,11 @@
 </script>
 
 <svelte:head>
-	<title>FAQ — coJournalist</title>
-	<meta name="description" content="Frequently asked questions about coJournalist — scouts, agent integration, the Sustainable Use License, and self-hosting." />
+	<title>FAQ — Scoutpost</title>
+	<meta name="description" content="Frequently asked questions about Scoutpost — AI scouts, agent integration, the Sustainable Use License, hosted accounts, and self-hosting." />
 	<link rel="alternate" type="text/plain" title="faq.txt" href="/faq.txt" />
-	<link rel="alternate" type="text/markdown" title="coJournalist skill" href="/skills/cojournalist.md" />
-	<link rel="alternate" type="text/markdown" title="coJournalist setup skill" href="/skills/cojournalist-setup.md" />
+	<link rel="alternate" type="text/markdown" title="Scoutpost skill" href="/skills/cojournalist.md" />
+	<link rel="alternate" type="text/markdown" title="Scoutpost setup skill" href="/skills/cojournalist-setup.md" />
 </svelte:head>
 
 <div class="faq-page">
@@ -25,7 +25,7 @@
 			<h1 class="title">
 				Frequently Asked <span class="gradient-text">Questions</span>
 			</h1>
-			<p class="subtitle">Licensing, self-hosting, and how coJournalist works for newsrooms.</p>
+			<p class="subtitle">Licensing, self-hosting, and how Scoutpost works for newsrooms.</p>
 		</header>
 
 		<div class="faq-list">
@@ -33,23 +33,23 @@
 				<h2 class="section-title">Licensing</h2>
 
 				<details class="faq-item">
-					<summary class="faq-question">What license does coJournalist use?</summary>
+					<summary class="faq-question">What license does Scoutpost use?</summary>
 					<div class="faq-answer">
-						<p>coJournalist uses the <strong>Sustainable Use License</strong>, a fair-code license. It allows free use, modification, and redistribution for internal purposes, with restrictions on reselling or offering the software as a hosted service.</p>
+						<p>Scoutpost uses the <strong>Sustainable Use License</strong>, a fair-code license. It allows free use, modification, and redistribution for internal purposes, with restrictions on reselling or offering the software as a hosted service.</p>
 					</div>
 				</details>
 
 				<details class="faq-item">
-					<summary class="faq-question">Can I use coJournalist in my newsroom?</summary>
+					<summary class="faq-question">Can I use Scoutpost in my newsroom?</summary>
 					<div class="faq-answer">
-						<p><strong>Yes.</strong> You can deploy, modify, and use coJournalist for your newsroom's internal operations — monitoring beats, tracking sources, generating leads, and producing content. This is exactly what the license is designed for.</p>
+						<p><strong>Yes.</strong> You can deploy, modify, and use Scoutpost for your newsroom's internal operations — monitoring beats, tracking sources, generating leads, and producing content. This is exactly what the license is designed for.</p>
 					</div>
 				</details>
 
 				<details class="faq-item">
 					<summary class="faq-question">Can I modify the code?</summary>
 					<div class="faq-answer">
-						<p><strong>Yes.</strong> You can modify coJournalist to fit your newsroom's needs — add custom scout types, change the UI, integrate with your CMS, or adapt it for your editorial workflow. Your modifications are for your internal use.</p>
+						<p><strong>Yes.</strong> You can modify Scoutpost to fit your newsroom's needs — add custom scout types, change the UI, integrate with your CMS, or adapt it for your editorial workflow. Your modifications are for your internal use.</p>
 					</div>
 				</details>
 
@@ -57,7 +57,7 @@
 					<summary class="faq-question">What am I NOT allowed to do?</summary>
 					<div class="faq-answer">
 						<ul>
-							<li><strong>Resell it</strong> — you cannot sell coJournalist or a derivative as a standalone product</li>
+							<li><strong>Resell it</strong> — you cannot sell Scoutpost or a derivative as a standalone product</li>
 							<li><strong>Offer it as a service</strong> — you cannot host it and charge others for access (SaaS, managed service)</li>
 							<li><strong>White-label it</strong> — you cannot rebrand it and distribute it as your own product</li>
 						</ul>
@@ -66,9 +66,9 @@
 				</details>
 
 				<details class="faq-item">
-					<summary class="faq-question">Is coJournalist open source?</summary>
+					<summary class="faq-question">Is Scoutpost open source?</summary>
 					<div class="faq-answer">
-						<p>coJournalist is <strong>source-available</strong> under the Sustainable Use License. All code is public and readable on GitHub. The license is more permissive than proprietary software but more restrictive than MIT or Apache 2.0 — specifically, it prevents using the software to compete with the original product. This is the same model used by <a href="https://n8n.io" target="_blank" rel="noopener noreferrer">n8n</a>, <a href="https://cal.com" target="_blank" rel="noopener noreferrer">Cal.com</a>, and other fair-code projects.</p>
+						<p>Scoutpost is <strong>source-available</strong> under the Sustainable Use License. All code is public and readable on GitHub. The license is more permissive than proprietary software but more restrictive than MIT or Apache 2.0 — specifically, it prevents using the software to compete with the original product. This is the same model used by <a href="https://n8n.io" target="_blank" rel="noopener noreferrer">n8n</a>, <a href="https://cal.com" target="_blank" rel="noopener noreferrer">Cal.com</a>, and other fair-code projects.</p>
 					</div>
 				</details>
 			</section>
@@ -77,7 +77,7 @@
 				<h2 class="section-title">Self-hosting</h2>
 
 				<details class="faq-item">
-					<summary class="faq-question">How do I deploy coJournalist on my own infrastructure?</summary>
+					<summary class="faq-question">How do I deploy Scoutpost on my own infrastructure?</summary>
 					<div class="faq-answer">
 						<p>The GitHub repo ships with an <strong>automated setup flow</strong>. Drop any AI coding agent (Claude Code, Cursor, Codex, etc.) into the repo, invoke the setup skill, and it provisions everything end-to-end: a fresh Supabase project, the edge functions, and the frontend.</p>
 						<p>Manual deployment is also documented in <code>automation/SETUP_AGENT.md</code> and <code>deploy/SETUP.md</code> — nothing is gated.</p>
@@ -109,7 +109,7 @@
 				<details class="faq-item">
 					<summary class="faq-question">Does self-hosting cost anything?</summary>
 					<div class="faq-answer">
-						<p><strong>Nothing to us.</strong> coJournalist itself is free to self-host under the Sustainable Use License. Your only costs are the third-party services you connect (Supabase, Gemini, Firecrawl, Resend, Apify) and whatever hosting you choose for the frontend.</p>
+						<p><strong>Nothing to us.</strong> Scoutpost itself is free to self-host under the Sustainable Use License. Your only costs are the third-party services you connect (Supabase, Gemini, Firecrawl, Resend, Apify) and whatever hosting you choose for the frontend.</p>
 					</div>
 				</details>
 			</section>
@@ -118,16 +118,16 @@
 				<h2 class="section-title">Product</h2>
 
 				<details class="faq-item">
-					<summary class="faq-question">What is coJournalist?</summary>
+					<summary class="faq-question">What is Scoutpost?</summary>
 					<div class="faq-answer">
-						<p>coJournalist is an AI-powered local news monitoring platform. It helps journalists and newsrooms track beats, monitor sources, and surface story leads through automated scouts that watch the web, social media, and government pages on a schedule.</p>
+						<p>Scoutpost is an AI-powered local news monitoring platform, formerly called coJournalist. It helps journalists and newsrooms track beats, monitor sources, and surface story leads through automated scouts that watch the web, social media, and government pages on a schedule.</p>
 					</div>
 				</details>
 
 				<details class="faq-item">
 					<summary class="faq-question">What's the difference between the hosted and self-hosted versions?</summary>
 					<div class="faq-answer">
-						<p><strong>Hosted (cojournalist.ai)</strong> — we run everything. Sign in with MuckRock, pay per credits, no setup needed.</p>
+						<p><strong>Hosted (scoutpost.ai)</strong> — we run everything. Sign in with MuckRock, pay per credits, no setup needed.</p>
 						<p><strong>Self-hosted</strong> — you run it on your own infrastructure (Supabase + a static host). No credit limits, full control, bring your own API keys. Free, open source, and the same feature set as hosted.</p>
 					</div>
 				</details>

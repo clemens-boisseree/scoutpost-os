@@ -1,48 +1,48 @@
-# coJournalist
+# Scoutpost
 
-> AI-powered monitoring infrastructure for journalists. coJournalist runs scheduled scouts across pages, local news, social profiles, and civic sources, extracts atomic facts, deduplicates repeated coverage, and hands the results to journalists and AI assistants as a searchable knowledge base with a human verification boundary.
+> AI-powered monitoring infrastructure for journalists. Scoutpost runs scheduled scouts across pages, local news, social profiles, and civic sources, extracts atomic facts, deduplicates repeated coverage, and hands the results to journalists and AI assistants as a searchable knowledge base with a human verification boundary.
 
-coJournalist is built for local reporting, investigative workflows, and newsroom monitoring. The public product contract is:
+Scoutpost is built for local reporting, investigative workflows, and newsroom monitoring. The public product contract is:
 
 - scouts monitor sources on schedules
 - runs create information units
 - units can be verified or rejected by humans
 - agents can connect through MCP, REST, or CLI
-- the hosted product lives at `cojournalist.ai`, with self-hosting also supported
+- the hosted product lives at `scoutpost.ai`, with self-hosting also supported
 
 ## Start here
 
-- [Skills index](https://www.cojournalist.ai/skills): Primary AI entrypoint for the public skill files
-- [Full flattened docs](https://www.cojournalist.ai/llms-full.txt): Primary one-shot ingestion file for docs and skills together
-- [Overview](https://www.cojournalist.ai/overview.txt): Short product overview and key benefits
-- [Docs home](https://www.cojournalist.ai/docs): Public documentation for humans
-- [Docs in text form](https://www.cojournalist.ai/docs.txt): Short machine-readable public docs
+- [Skills index](https://www.scoutpost.ai/skills): Primary AI entrypoint for the public skill files
+- [Full flattened docs](https://www.scoutpost.ai/llms-full.txt): Primary one-shot ingestion file for docs and skills together
+- [Overview](https://www.scoutpost.ai/overview.txt): Short product overview and key benefits
+- [Docs home](https://www.scoutpost.ai/docs): Public documentation for humans
+- [Docs in text form](https://www.scoutpost.ai/docs.txt): Short machine-readable public docs
 
 ## Public product pages
 
-- [Login and app entry](https://www.cojournalist.ai/login): Sign-in and public product framing
-- [Pricing](https://www.cojournalist.ai/pricing): Hosted plans and credits
-- [Pricing in text form](https://www.cojournalist.ai/pricing.txt): Short hosted pricing summary
-- [FAQ](https://www.cojournalist.ai/faq): Licensing, self-hosting, and product basics
-- [FAQ in text form](https://www.cojournalist.ai/faq.txt): Short machine-readable FAQ
+- [Login and app entry](https://www.scoutpost.ai/login): Sign-in and public product framing
+- [Pricing](https://www.scoutpost.ai/pricing): Hosted plans and credits
+- [Pricing in text form](https://www.scoutpost.ai/pricing.txt): Short hosted pricing summary
+- [FAQ](https://www.scoutpost.ai/faq): Licensing, self-hosting, and product basics
+- [FAQ in text form](https://www.scoutpost.ai/faq.txt): Short machine-readable FAQ
 
 ## Product model
 
-- [Page Scout](https://www.cojournalist.ai/docs#scout-page): Monitor a single URL for meaningful changes
-- [Beat Scout](https://www.cojournalist.ai/docs#scout-beat): Monitor a beat by topic or geography
-- [Social Scout](https://www.cojournalist.ai/docs#scout-social): Monitor social profiles and post deletions
-- [Civic Scout](https://www.cojournalist.ai/docs#scout-civic): Monitor council materials and PDF-heavy civic sources
-- [Information units](https://www.cojournalist.ai/docs#units): Atomic facts, search, verification, and audit trail
-- [Verification](https://www.cojournalist.ai/docs#verification): Human editorial approval before publishable use
-- [Credits](https://www.cojournalist.ai/docs#credits): Hosted cost model and planning
+- [Page Scout](https://www.scoutpost.ai/docs#scout-page): Monitor a single URL for meaningful changes
+- [Beat Scout](https://www.scoutpost.ai/docs#scout-beat): Monitor a beat by topic or geography
+- [Social Scout](https://www.scoutpost.ai/docs#scout-social): Monitor social profiles and post deletions
+- [Civic Scout](https://www.scoutpost.ai/docs#scout-civic): Monitor council materials and PDF-heavy civic sources
+- [Information units](https://www.scoutpost.ai/docs#units): Atomic facts, search, verification, and audit trail
+- [Verification](https://www.scoutpost.ai/docs#verification): Human editorial approval before publishable use
+- [Credits](https://www.scoutpost.ai/docs#credits): Hosted cost model and planning
 
 ## Integrations
 
-- [MCP server](https://www.cojournalist.ai/mcp): Remote MCP endpoint for agent clients
-- [REST docs](https://www.cojournalist.ai/docs#rest): Public REST integration guidance
-- [OpenAPI spec](https://www.cojournalist.ai/functions/v1/openapi-spec): Machine-readable REST schema
-- [Swagger UI](https://www.cojournalist.ai/swagger): Interactive API reference
-- [CLI README](https://github.com/buriedsignals/cojournalist-os/blob/main/cli/README.md): `cojo` install and usage
+- [MCP server](https://www.scoutpost.ai/mcp): Remote MCP endpoint for agent clients
+- [REST docs](https://www.scoutpost.ai/docs#rest): Public REST integration guidance
+- [OpenAPI spec](https://www.scoutpost.ai/functions/v1/openapi-spec): Machine-readable REST schema
+- [Swagger UI](https://www.scoutpost.ai/swagger): Interactive API reference
+- [CLI README](https://github.com/buriedsignals/cojournalist-os/blob/main/cli/README.md): `scout` install and usage
 - [MCP bridge README](https://github.com/buriedsignals/cojournalist-os/blob/main/mcp/README.md): Stdio bridge for MCP clients
 
 ## Source and support

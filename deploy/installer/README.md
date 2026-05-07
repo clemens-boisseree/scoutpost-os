@@ -1,11 +1,11 @@
-# Dockerized coJournalist Installer
+# Dockerized Scoutpost Installer
 
 This is the recommended self-host setup path for newsrooms that want a
 disposable operator container instead of installing Node, Deno, Supabase CLI,
 GitHub CLI, jq, and OpenSSL on the host.
 
 For the full newsroom-facing install guide, including the tech stack, credentials
-flow, validation, updates, and `cojo` CLI setup, see
+flow, validation, updates, and `scout` CLI setup, see
 [`docs/oss/newsroom-docker-install.md`](../../docs/oss/newsroom-docker-install.md).
 
 The container does not define a separate setup flow. It mounts the same
@@ -30,7 +30,7 @@ workspace and builds the same installer image locally.
 ## Install
 
 Run from the directory that contains `cojournalist-setup.json`. If `/workspace`
-is not already a coJournalist checkout, the image clones
+is not already a Scoutpost checkout, the image clones
 `buriedsignals/cojournalist-os` into `/workspace/cojournalist-os`.
 
 ```bash

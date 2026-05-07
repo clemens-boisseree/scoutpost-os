@@ -1,21 +1,21 @@
 ---
-name: cojournalist
+name: scoutpost
 description: >
-  Operate coJournalist through MCP, CLI, or REST: create scouts, search
+  Operate Scoutpost through MCP, CLI, or REST: create scouts, search
   information units, export findings, and preserve editorial verification.
 ---
 
-# coJournalist skill
+# Scoutpost skill
 
-You have been connected to **coJournalist**, a monitoring platform for journalists and newsrooms. A human journalist is using you to create scouts, search findings, and turn emerging developments into organized leads. This document tells you how to use coJournalist correctly and how to behave around editorial verification.
+You have been connected to **Scoutpost**, a monitoring platform for journalists and newsrooms. A human journalist is using you to create scouts, search findings, and turn emerging developments into organized leads. This document tells you how to use Scoutpost correctly and how to behave around editorial verification.
 
-Read this once. Apply it for every coJournalist task in this session.
+Read this once. Apply it for every Scoutpost task in this session.
 
 ---
 
-## What coJournalist does
+## What Scoutpost does
 
-coJournalist runs scheduled scouts that watch:
+Scoutpost runs scheduled scouts that watch:
 
 - public pages
 - local news and beats
@@ -39,11 +39,11 @@ The journalist stays responsible for verification. Your job is to help monitor, 
 
 ## How you're connected
 
-coJournalist is usually exposed to agents through one of these paths:
+Scoutpost is usually exposed to agents through one of these paths:
 
-- **CLI**: the `cojo` binary on `$PATH`
-- **MCP**: remote MCP at `https://www.cojournalist.ai/mcp`
-- **REST API**: public HTTP surface documented at `https://www.cojournalist.ai/swagger`
+- **CLI**: the `scout` binary on `$PATH`
+- **MCP**: remote MCP at `https://www.scoutpost.ai/mcp`
+- **REST API**: public HTTP surface documented at `https://www.scoutpost.ai/swagger`
 
 If both CLI and MCP are available, prefer the CLI for shell-capable agents because the commands stay visible in the transcript.
 
@@ -66,12 +66,12 @@ If both CLI and MCP are available, prefer the CLI for shell-capable agents becau
 
 ## Useful URLs
 
-- App: https://www.cojournalist.ai/login
-- Docs: https://www.cojournalist.ai/docs
-- Docs text: https://www.cojournalist.ai/docs.txt
-- Pricing: https://www.cojournalist.ai/pricing
-- FAQ: https://www.cojournalist.ai/faq
-- Setup skill: https://www.cojournalist.ai/skills/cojournalist-setup.md
+- App: https://www.scoutpost.ai/login
+- Docs: https://www.scoutpost.ai/docs
+- Docs text: https://www.scoutpost.ai/docs.txt
+- Pricing: https://www.scoutpost.ai/pricing
+- FAQ: https://www.scoutpost.ai/faq
+- Setup skill: https://www.scoutpost.ai/skills/cojournalist-setup.md
 
 ## CLI and MCP parity
 
@@ -91,7 +91,7 @@ Use whichever surface is connected to your agent. Do not ask the user to switch 
 
 ## Verification policy
 
-coJournalist has a deliberate human verification boundary:
+Scoutpost has a deliberate human verification boundary:
 
 - **verified** units are safe to treat as editor-approved facts
 - **unverified** units are leads that still need review
@@ -100,12 +100,12 @@ When in doubt, say that a claim is unverified and cite the source.
 
 ## Setup vs product use
 
-This file is the **product-use** skill. If the user wants to deploy, self-host, or provision coJournalist, use the setup skill instead:
+This file is the **product-use** skill. If the user wants to deploy, self-host, or provision Scoutpost, use the setup skill instead:
 
-- https://www.cojournalist.ai/skills/cojournalist-setup.md
+- https://www.scoutpost.ai/skills/cojournalist-setup.md
 
 ## Canonical location
 
-Canonical URL: `https://www.cojournalist.ai/skills/cojournalist.md`
+Canonical URL: `https://www.scoutpost.ai/skills/cojournalist.md`
 
-Legacy compatibility URL: `https://www.cojournalist.ai/skill.md`
+Legacy compatibility URL: `https://www.scoutpost.ai/skill.md`

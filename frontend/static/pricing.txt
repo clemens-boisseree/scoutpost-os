@@ -1,6 +1,6 @@
-# coJournalist pricing
+# Scoutpost pricing
 
-Hosted coJournalist uses monthly credits.
+Hosted Scoutpost uses monthly credits.
 
 ## Plans
 
@@ -19,6 +19,6 @@ Always disclose spend before triggering expensive runs, especially Civic Scouts 
 
 ## Pricing links
 
-- Pricing page: https://www.cojournalist.ai/pricing
-- FAQ: https://www.cojournalist.ai/faq
-- Docs: https://www.cojournalist.ai/docs
+- Pricing page: https://www.scoutpost.ai/pricing
+- FAQ: https://www.scoutpost.ai/faq
+- Docs: https://www.scoutpost.ai/docs

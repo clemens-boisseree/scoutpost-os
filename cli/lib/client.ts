@@ -1,4 +1,4 @@
-// Shared REST client + helpers for cojo
+// Shared REST client + helpers for scout
 
 export interface Config {
   api_url?: string;
@@ -16,7 +16,7 @@ export const KNOWN_HOSTED_SUPABASE_PROJECT_REF = "gfmdziplticfoak" + "hrfpt";
 export function configDir(): string {
   const home = Deno.env.get("HOME");
   if (!home) throw new Error("HOME environment variable is not set");
-  return `${home}/.cojournalist`;
+  return `${home}/.scoutpost`;
 }
 
 export function configPath(): string {
@@ -46,12 +46,15 @@ function isDirectory(path: string): boolean {
   }
 }
 
-export function isKnownHostedSupabaseTarget(apiUrl: string | undefined): boolean {
+export function isKnownHostedSupabaseTarget(
+  apiUrl: string | undefined,
+): boolean {
   return Boolean(apiUrl?.includes(KNOWN_HOSTED_SUPABASE_PROJECT_REF));
 }
 
 export function isSelfHostCheckout(cwd = Deno.cwd()): boolean {
-  return isDirectory(`${cwd}/supabase/functions`) && isDirectory(`${cwd}/frontend`);
+  return isDirectory(`${cwd}/supabase/functions`) &&
+    isDirectory(`${cwd}/frontend`);
 }
 
 export function hostedSupabaseTargetWarning(
@@ -61,8 +64,8 @@ export function hostedSupabaseTargetWarning(
   if (!isKnownHostedSupabaseTarget(apiUrl) || !isSelfHostCheckout(cwd)) {
     return null;
   }
-  return "This cojo CLI is running from a self-host checkout but api_url points at " +
-    `the hosted coJournalist Supabase project (${KNOWN_HOSTED_SUPABASE_PROJECT_REF}). ` +
+  return "This scout CLI is running from a self-host checkout but api_url points at " +
+    `the hosted Scoutpost Supabase project (${KNOWN_HOSTED_SUPABASE_PROJECT_REF}). ` +
     "Set api_url to your newsroom Supabase project before creating or listing scouts.";
 }
 
@@ -93,17 +96,17 @@ export function loadConfig(): ResolvedConfig {
   if (!cfg.api_url) {
     throw new Error(
       "api_url not set.\n" +
-        "  Hosted coJournalist: cojo config set api_url=https://www.cojournalist.ai/functions/v1\n" +
-        "  Self-hosted Supabase: cojo config set api_url=https://<project>.supabase.co",
+        "  Hosted Scoutpost: scout config set api_url=https://www.scoutpost.ai/functions/v1\n" +
+        "  Self-hosted Supabase: scout config set api_url=https://<project>.supabase.co",
     );
   }
   if (!cfg.api_key && !cfg.auth_token) {
     throw new Error(
-      "No credential set. Generate an API key at https://www.cojournalist.ai → Agents → API → Create key, then:\n" +
-        "  cojo config set api_key=cj_xxx\n" +
-        "  cojo config set api_url=https://www.cojournalist.ai/functions/v1\n" +
+      "No credential set. Generate an API key at https://www.scoutpost.ai → Agents → API → Create key, then:\n" +
+        "  scout config set api_key=cj_xxx\n" +
+        "  scout config set api_url=https://www.scoutpost.ai/functions/v1\n" +
         "  For hosted or raw Edge Functions, also set:\n" +
-        "  cojo config set supabase_anon_key=<SUPABASE_ANON_KEY>",
+        "  scout config set supabase_anon_key=<SUPABASE_ANON_KEY>",
     );
   }
   // Warn (don't fail) if api_key is set against Edge Functions without anon key
@@ -116,7 +119,7 @@ export function loadConfig(): ResolvedConfig {
   ) {
     console.error(
       "[warning] api_key set without supabase_anon_key. Edge Functions require " +
-        "an `apikey:` header. Run: cojo config set supabase_anon_key=<anon key>",
+        "an `apikey:` header. Run: scout config set supabase_anon_key=<anon key>",
     );
   }
   warnIfKnownHostedSupabaseTarget(cfg.api_url);

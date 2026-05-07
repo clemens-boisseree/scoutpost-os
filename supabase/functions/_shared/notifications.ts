@@ -28,8 +28,8 @@ import { logEvent } from "./log.ts";
 import { getString } from "./email_translations.ts";
 
 const RESEND_URL = "https://api.resend.com/emails";
-const FROM = "coJournalist <info@cojournalist.ai>";
-const REPLY_TO = "info@cojournalist.ai";
+const FROM = "Scoutpost <alerts@scoutpost.ai>";
+const REPLY_TO = "updates@scoutpost.ai";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -865,7 +865,7 @@ export function buildBaseHtml(p: BaseHtmlParams): string {
   const ctaSection = p.ctaText
     ? `
       <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid ${COLORS.border}; text-align: center;">
-        <a href="https://cojournalist.ai" style="color: ${accentColor}; text-decoration: none; font-size: 14px; font-family: ${FONT_BODY};">
+        <a href="https://www.scoutpost.ai" style="color: ${accentColor}; text-decoration: none; font-size: 14px; font-family: ${FONT_BODY};">
           ${escapeHtml(p.ctaText)}
         </a>
       </div>`

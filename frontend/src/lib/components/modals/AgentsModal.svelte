@@ -19,8 +19,8 @@
 	export let apiOnly = false;
 	export let onClose: () => void = () => {};
 
-	const STORAGE_KEY = 'cojo:lastAgent';
-	const PATH_STORAGE_KEY = 'cojo:lastPath';
+	const STORAGE_KEY = 'scout:lastAgent';
+	const PATH_STORAGE_KEY = 'scout:lastPath';
 
 	let agent: AgentSlug = 'claude-code';
 	let view: 'agents' | 'api' = 'agents';
@@ -136,7 +136,7 @@
 							Bearer-token REST endpoints for custom scripts, ChatGPT Actions, or any non-MCP
 							client.
 						{:else}
-							Point your agent at coJournalist via the <code>cojo</code> CLI (one binary, works
+							Point your agent at Scoutpost via the <code>scout</code> CLI (one binary, works
 							anywhere with a shell) or via MCP (for chat UIs without shell access).
 						{/if}
 					</p>
@@ -228,7 +228,7 @@
 								</div>
 								<p>
 									It tells your AI to fetch <code>skill.md</code>, install the
-									<code>cojo CLI</code>, and verify the connection. The prompt tells the agent
+									<code>scout CLI</code>, and verify the connection. The prompt tells the agent
 									to have you save a <code>cj_…</code> API key locally — click
 									<strong>API</strong> above to create one.
 								</p>
@@ -247,7 +247,7 @@
 								<a
 									class="skill-action"
 									href={agentTarget.skillUrl}
-									download="cojournalist-skill.md"
+									download="scoutpost-skill.md"
 									target="_blank"
 									rel="noopener"
 								>
@@ -275,7 +275,7 @@
 								them manually.
 							{:else}
 								This runtime needs a manual connector or config step. Follow the steps below;
-								OAuth handles sign-in when the runtime connects to coJournalist.
+								OAuth handles sign-in when the runtime connects to Scoutpost.
 							{/if}
 						</p>
 						<AgentSetup {recipe} />

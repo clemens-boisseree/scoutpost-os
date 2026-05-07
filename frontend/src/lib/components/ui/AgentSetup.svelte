@@ -80,7 +80,7 @@
 		<div class="block">
 			<div class="block-head">
 				<span class="block-label">
-					Install <code class="path">cojo</code>
+					Install <code class="path">scout</code>
 				</span>
 				<button class="copy-btn" on:click={() => copy('install', recipe.installCommand ?? '')}>
 					{#if copied === 'install'}
@@ -179,7 +179,7 @@
 		{:else}
 			<p>
 				Ask your AI:
-				<em>&ldquo;{recipe.verifyPrompt ?? 'List my coJournalist scouts'}&rdquo;</em>
+				<em>&ldquo;{recipe.verifyPrompt ?? 'List my Scoutpost scouts'}&rdquo;</em>
 				&mdash; if it returns your scouts, you&rsquo;re connected.
 			</p>
 		{/if}

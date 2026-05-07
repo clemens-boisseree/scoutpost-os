@@ -1,21 +1,21 @@
 ---
-name: cojournalist
+name: scoutpost
 description: >
-  Operate coJournalist through MCP, CLI, or REST: create scouts, search
+  Operate Scoutpost through MCP, CLI, or REST: create scouts, search
   information units, export findings, and preserve editorial verification.
 ---
 
-# coJournalist skill
+# Scoutpost skill
 
-You have been connected to **coJournalist**, a monitoring platform for journalists and newsrooms. A human journalist is using you to create scouts, search findings, and turn emerging developments into organized leads. This document tells you how to use coJournalist correctly and how to behave around editorial verification.
+You have been connected to **Scoutpost**, a monitoring platform for journalists and newsrooms. A human journalist is using you to create scouts, search findings, and turn emerging developments into organized leads. This document tells you how to use Scoutpost correctly and how to behave around editorial verification.
 
-Read this once. Apply it for every coJournalist task in this session.
+Read this once. Apply it for every Scoutpost task in this session.
 
 ---
 
-## What coJournalist does
+## What Scoutpost does
 
-coJournalist runs scheduled scouts that watch:
+Scoutpost runs scheduled scouts that watch:
 
 - public pages
 - local news and beats
@@ -39,17 +39,17 @@ The journalist stays responsible for verification. Your job is to help monitor, 
 
 ## How you're connected
 
-coJournalist is usually exposed to agents through one of these paths:
+Scoutpost is usually exposed to agents through one of these paths:
 
-- **CLI**: the `cojo` binary on `$PATH`
+- **CLI**: the `scout` binary on `$PATH`
 - **MCP**: the remote MCP URL shown in the app's Agents modal
 - **REST API**: the API base shown in the app's Agents -> API panel
 
 If both CLI and MCP are available, prefer the CLI for shell-capable agents because the commands stay visible in the transcript.
 
-Do not assume a hosted cojournalist.ai endpoint. In self-hosted deployments,
+Do not assume a hosted scoutpost.ai endpoint. In self-hosted deployments,
 use the newsroom's own Supabase/API/MCP targets from the Agents modal or the
-local `cojo` config.
+local `scout` config.
 
 ## Core workflow
 
@@ -70,7 +70,7 @@ local `cojo` config.
 
 ## Useful URLs
 
-- App: open the newsroom coJournalist URL
+- App: open the newsroom Scoutpost URL
 - Docs: `/docs` on the deployed app
 - Docs text: `/docs.txt` on the deployed app
 - FAQ: `/faq` on the deployed app
@@ -94,7 +94,7 @@ Use whichever surface is connected to your agent. Do not ask the user to switch 
 
 ## Verification policy
 
-coJournalist has a deliberate human verification boundary:
+Scoutpost has a deliberate human verification boundary:
 
 - **verified** units are safe to treat as editor-approved facts
 - **unverified** units are leads that still need review
@@ -103,12 +103,12 @@ When in doubt, say that a claim is unverified and cite the source.
 
 ## Setup vs product use
 
-This file is the **product-use** skill. If the user wants to deploy, self-host, or provision coJournalist, use the setup skill instead:
+This file is the **product-use** skill. If the user wants to deploy, self-host, or provision Scoutpost, use the setup skill instead:
 
-- https://www.cojournalist.ai/skills/cojournalist-setup.md
+- https://www.scoutpost.ai/skills/cojournalist-setup.md
 
 ## Canonical location
 
-Canonical URL: `https://www.cojournalist.ai/skills/cojournalist.md`
+Canonical URL: `https://www.scoutpost.ai/skills/cojournalist.md`
 
-Legacy compatibility URL: `https://www.cojournalist.ai/skill.md`
+Legacy compatibility URL: `https://www.scoutpost.ai/skill.md`

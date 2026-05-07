@@ -1,10 +1,10 @@
-# coJournalist docs in text form
+# Scoutpost docs in text form
 
-This is the short plain-text gateway to the public documentation. The full rendered docs live at `https://www.cojournalist.ai/docs`, and the flattened one-shot ingestion file lives at `https://www.cojournalist.ai/llms-full.txt`.
+This is the short plain-text gateway to the public documentation. The full rendered docs live at `https://www.scoutpost.ai/docs`, and the flattened one-shot ingestion file lives at `https://www.scoutpost.ai/llms-full.txt`.
 
-## What coJournalist does
+## What Scoutpost does
 
-coJournalist lets journalists create scheduled scouts that monitor pages, local news, social profiles, and civic sources. Each run extracts information units, deduplicates them, and lands them in an editorial inbox for verification.
+Scoutpost lets journalists create scheduled scouts that monitor pages, local news, social profiles, and civic sources. Each run extracts information units, deduplicates them, and lands them in an editorial inbox for verification.
 
 ## Key concepts
 
@@ -17,25 +17,25 @@ coJournalist lets journalists create scheduled scouts that monitor pages, local 
 
 ## Integration surfaces
 
-- **MCP**: `https://www.cojournalist.ai/mcp`
-- **REST API**: `https://www.cojournalist.ai/functions/v1`
-- **OpenAPI**: `https://www.cojournalist.ai/functions/v1/openapi-spec`
-- **CLI**: `cojo`, documented at `https://github.com/buriedsignals/cojournalist-os/blob/main/cli/README.md`
+- **MCP**: `https://www.scoutpost.ai/mcp`
+- **REST API**: `https://www.scoutpost.ai/functions/v1`
+- **OpenAPI**: `https://www.scoutpost.ai/functions/v1/openapi-spec`
+- **CLI**: `scout`, documented at `https://github.com/buriedsignals/cojournalist-os/blob/main/cli/README.md`
 
 ## Public docs
 
-- Docs home: https://www.cojournalist.ai/docs
-- Pricing: https://www.cojournalist.ai/pricing
-- Pricing text: https://www.cojournalist.ai/pricing.txt
-- FAQ: https://www.cojournalist.ai/faq
-- FAQ text: https://www.cojournalist.ai/faq.txt
-- Skills index: https://www.cojournalist.ai/skills
-- Skills text index: https://www.cojournalist.ai/skills.txt
+- Docs home: https://www.scoutpost.ai/docs
+- Pricing: https://www.scoutpost.ai/pricing
+- Pricing text: https://www.scoutpost.ai/pricing.txt
+- FAQ: https://www.scoutpost.ai/faq
+- FAQ text: https://www.scoutpost.ai/faq.txt
+- Skills index: https://www.scoutpost.ai/skills
+- Skills text index: https://www.scoutpost.ai/skills.txt
 
 ## Public skills
 
-- Product skill: https://www.cojournalist.ai/skills/cojournalist.md
-- Setup skill: https://www.cojournalist.ai/skills/cojournalist-setup.md
+- Product skill: https://www.scoutpost.ai/skills/cojournalist.md
+- Setup skill: https://www.scoutpost.ai/skills/cojournalist-setup.md
 
 ## Product behavior to preserve
 

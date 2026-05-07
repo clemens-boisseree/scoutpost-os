@@ -3,7 +3,7 @@
 Every public path with the canonical probe and expected response. Use this when
 debugging.
 
-Base URL: `https://www.cojournalist.ai/mcp`
+Base URL: `https://www.scoutpost.ai/mcp`
 
 ## Discovery (RFC 9728 / RFC 8414)
 
@@ -12,17 +12,17 @@ Base URL: `https://www.cojournalist.ai/mcp`
 RFC 9728 §3.1 path-suffix form (the form Anthropic Cowork actually uses).
 
 ```
-$ curl -i https://www.cojournalist.ai/.well-known/oauth-protected-resource/mcp
+$ curl -i https://www.scoutpost.ai/.well-known/oauth-protected-resource/mcp
 
 200 OK
 Content-Type: application/json
 
 {
-  "resource": "https://www.cojournalist.ai/mcp",
-  "authorization_servers": ["https://www.cojournalist.ai/mcp"],
+  "resource": "https://www.scoutpost.ai/mcp",
+  "authorization_servers": ["https://www.scoutpost.ai/mcp"],
   "bearer_methods_supported": ["header"],
   "scopes_supported": ["mcp"],
-  "resource_documentation": "https://www.cojournalist.ai/skills/cojournalist.md"
+  "resource_documentation": "https://www.scoutpost.ai/skills/cojournalist.md"
 }
 ```
 
@@ -42,10 +42,10 @@ Inspector) still fetch only this form.
 Content-Type: application/json
 
 {
-  "issuer": "https://www.cojournalist.ai/mcp",
-  "authorization_endpoint": "https://www.cojournalist.ai/mcp/authorize",
-  "token_endpoint": "https://www.cojournalist.ai/mcp/token",
-  "registration_endpoint": "https://www.cojournalist.ai/mcp/register",
+  "issuer": "https://www.scoutpost.ai/mcp",
+  "authorization_endpoint": "https://www.scoutpost.ai/mcp/authorize",
+  "token_endpoint": "https://www.scoutpost.ai/mcp/token",
+  "registration_endpoint": "https://www.scoutpost.ai/mcp/register",
   "response_types_supported": ["code"],
   "grant_types_supported": ["authorization_code", "refresh_token"],
   "code_challenge_methods_supported": ["S256"],
@@ -62,10 +62,10 @@ Content-Type: application/json
 ### `HEAD /mcp`
 
 ```
-$ curl -I https://www.cojournalist.ai/mcp
+$ curl -I https://www.scoutpost.ai/mcp
 
 401 Unauthorized
-WWW-Authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://www.cojournalist.ai/mcp/.well-known/oauth-protected-resource"
+WWW-Authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://www.scoutpost.ai/mcp/.well-known/oauth-protected-resource"
 MCP-Protocol-Version: 2025-06-18
 Allow: POST, HEAD, OPTIONS
 ```
@@ -93,7 +93,7 @@ Content-Type: application/json
 ### `POST /mcp/register` — DCR (RFC 7591)
 
 ```
-$ curl -i -X POST https://www.cojournalist.ai/mcp/register \
+$ curl -i -X POST https://www.scoutpost.ai/mcp/register \
     -H 'content-type: application/json' \
     -d '{
       "redirect_uris": ["https://claude.ai/api/mcp/auth_callback"],
@@ -125,7 +125,7 @@ error with `400`/`401`/`403`.
 
 ```
 $ CHALLENGE=$(echo -n verifier12345678901234567890123456789012345678901 | shasum -a 256 | cut -d' ' -f1 | xxd -r -p | base64 | tr '+/' '-_' | tr -d '=')
-$ curl -i -G "https://www.cojournalist.ai/mcp/authorize" \
+$ curl -i -G "https://www.scoutpost.ai/mcp/authorize" \
     --data-urlencode "client_id=$CLIENT_ID" \
     --data-urlencode "redirect_uri=https://claude.ai/api/mcp/auth_callback" \
     --data-urlencode "response_type=code" \
@@ -143,7 +143,7 @@ match), `state`, `code_challenge`, `code_challenge_method=S256`.
 ### `POST /mcp/token`
 
 ```
-$ curl -i -X POST https://www.cojournalist.ai/mcp/token \
+$ curl -i -X POST https://www.scoutpost.ai/mcp/token \
     -H 'content-type: application/x-www-form-urlencoded' \
     -d "grant_type=authorization_code&code=$CODE&redirect_uri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&client_id=$CLIENT_ID&code_verifier=$VERIFIER"
 
@@ -165,13 +165,13 @@ $ curl -i -X POST https://www.cojournalist.ai/mcp/token \
 ### `POST /mcp` (no bearer)
 
 ```
-$ curl -i -X POST https://www.cojournalist.ai/mcp \
+$ curl -i -X POST https://www.scoutpost.ai/mcp \
     -H 'content-type: application/json' \
     -H 'accept: application/json, text/event-stream' \
     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"x","version":"0"}}}'
 
 401 Unauthorized
-WWW-Authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://www.cojournalist.ai/mcp/.well-known/oauth-protected-resource"
+WWW-Authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://www.scoutpost.ai/mcp/.well-known/oauth-protected-resource"
 
 {"jsonrpc":"2.0","id":1,"error":{"code":-32001,"message":"missing bearer token"}}
 ```
@@ -182,13 +182,13 @@ WWW-Authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="
 `2025-03-26`, `2024-11-05`); otherwise falls back to advertised `2025-06-18`.
 
 ```
-$ curl -X POST https://www.cojournalist.ai/mcp \
+$ curl -X POST https://www.scoutpost.ai/mcp \
     -H "authorization: Bearer $TOKEN" \
     -H 'content-type: application/json' \
     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"x","version":"0"}}}'
 
 200 OK
-{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"cojournalist","version":"…"}}}
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"scoutpost","version":"…"}}}
 ```
 
 `tools/list` returns the union of all tools registered in `rpc.ts`. `tools/call`
@@ -205,7 +205,7 @@ regression-introduced 5xx and surprise cold-start spikes.
 ```bash
 for i in 1 2 3; do
   curl -sS -o /dev/null -w "well-known protected: %{http_code}/%{time_total}s\n" \
-    https://www.cojournalist.ai/.well-known/oauth-protected-resource/mcp
+    https://www.scoutpost.ai/.well-known/oauth-protected-resource/mcp
 done
 # Expect: all 200, sub-250ms.
 ```

@@ -1,14 +1,14 @@
-# coJournalist — full public AI reference
+# Scoutpost — full public AI reference
 
-> AI-powered monitoring infrastructure for journalists and newsrooms. This file is the flattened public AI-facing reference for coJournalist. It combines the product overview, the public docs summary, and both public skill files in one markdown document.
+> AI-powered monitoring infrastructure for journalists and newsrooms. This file is the flattened public AI-facing reference for Scoutpost. It combines the product overview, the public docs summary, and both public skill files in one markdown document.
 
-Last updated: 2026-04-23. Canonical source: https://www.cojournalist.ai/llms-full.txt
+Last updated: 2026-05-07. Canonical source: https://www.scoutpost.ai/llms-full.txt
 
 ---
 
 ## 1. Product overview
 
-coJournalist helps journalists stop re-checking the same pages, feeds, and government sites by hand. It runs scheduled scouts, extracts atomic facts, deduplicates repeated coverage, and keeps the resulting information units in a searchable knowledge base.
+Scoutpost helps journalists stop re-checking the same pages, feeds, and government sites by hand. It runs scheduled scouts, extracts atomic facts, deduplicates repeated coverage, and keeps the resulting information units in a searchable knowledge base.
 
 The product story exposed on the public site is:
 
@@ -16,7 +16,7 @@ The product story exposed on the public site is:
 - **Every story, once**: repeated coverage is collapsed to the underlying facts.
 - **A newsroom database, not a chat log**: information units are structured records with sources and timestamps.
 - **Works with existing workflows**: results can feed briefs, drafts, and exports.
-- **Human verification stays in the loop**: coJournalist has an explicit editorial approval step.
+- **Human verification stays in the loop**: Scoutpost has an explicit editorial approval step.
 
 ## 2. What it monitors
 
@@ -39,23 +39,23 @@ Verification is a hard product boundary. Agents can help search and summarize, b
 
 ## 4. Public docs and routes
 
-- Overview: https://www.cojournalist.ai/overview.txt
-- Docs: https://www.cojournalist.ai/docs
-- Docs text: https://www.cojournalist.ai/docs.txt
-- Pricing: https://www.cojournalist.ai/pricing
-- Pricing text: https://www.cojournalist.ai/pricing.txt
-- FAQ: https://www.cojournalist.ai/faq
-- FAQ text: https://www.cojournalist.ai/faq.txt
-- Skills index: https://www.cojournalist.ai/skills
-- Skills text index: https://www.cojournalist.ai/skills.txt
-- llms.txt: https://www.cojournalist.ai/llms.txt
+- Overview: https://www.scoutpost.ai/overview.txt
+- Docs: https://www.scoutpost.ai/docs
+- Docs text: https://www.scoutpost.ai/docs.txt
+- Pricing: https://www.scoutpost.ai/pricing
+- Pricing text: https://www.scoutpost.ai/pricing.txt
+- FAQ: https://www.scoutpost.ai/faq
+- FAQ text: https://www.scoutpost.ai/faq.txt
+- Skills index: https://www.scoutpost.ai/skills
+- Skills text index: https://www.scoutpost.ai/skills.txt
+- llms.txt: https://www.scoutpost.ai/llms.txt
 
 ## 5. Integrations
 
-- **MCP**: https://www.cojournalist.ai/mcp
-- **REST base**: https://www.cojournalist.ai/functions/v1
-- **OpenAPI**: https://www.cojournalist.ai/functions/v1/openapi-spec
-- **Swagger**: https://www.cojournalist.ai/swagger
+- **MCP**: https://www.scoutpost.ai/mcp
+- **REST base**: https://www.scoutpost.ai/functions/v1
+- **OpenAPI**: https://www.scoutpost.ai/functions/v1/openapi-spec
+- **Swagger**: https://www.scoutpost.ai/swagger
 - **CLI docs**: https://github.com/buriedsignals/cojournalist-os/blob/main/cli/README.md
 - **MCP bridge docs**: https://github.com/buriedsignals/cojournalist-os/blob/main/mcp/README.md
 
@@ -76,15 +76,15 @@ Agents should disclose spend before running expensive scouts or large batches.
 
 ## 7. Public skill: product use
 
-# coJournalist skill
+# Scoutpost skill
 
-You have been connected to **coJournalist**, a monitoring platform for journalists and newsrooms. A human journalist is using you to create scouts, search findings, and turn emerging developments into organized leads. This document tells you how to use coJournalist correctly and how to behave around editorial verification.
+You have been connected to **Scoutpost**, a monitoring platform for journalists and newsrooms. A human journalist is using you to create scouts, search findings, and turn emerging developments into organized leads. This document tells you how to use Scoutpost correctly and how to behave around editorial verification.
 
-Read this once. Apply it for every coJournalist task in this session.
+Read this once. Apply it for every Scoutpost task in this session.
 
-## What coJournalist does
+## What Scoutpost does
 
-coJournalist runs scheduled scouts that watch public pages, local news and beats, social profiles, and councils. Each run extracts **information units**: atomic, source-linked facts. Units are deduplicated across repeated coverage and land in an editorial inbox.
+Scoutpost runs scheduled scouts that watch public pages, local news and beats, social profiles, and councils. Each run extracts **information units**: atomic, source-linked facts. Units are deduplicated across repeated coverage and land in an editorial inbox.
 
 The journalist stays responsible for verification. Your job is to help monitor, search, organize, summarize, and draft safely.
 
@@ -98,26 +98,26 @@ The journalist stays responsible for verification. Your job is to help monitor, 
 
 ## Useful URLs
 
-- App: https://www.cojournalist.ai/login
-- Docs: https://www.cojournalist.ai/docs
-- Docs text: https://www.cojournalist.ai/docs.txt
-- Pricing: https://www.cojournalist.ai/pricing
-- FAQ: https://www.cojournalist.ai/faq
-- Setup skill: https://www.cojournalist.ai/skills/cojournalist-setup.md
+- App: https://www.scoutpost.ai/login
+- Docs: https://www.scoutpost.ai/docs
+- Docs text: https://www.scoutpost.ai/docs.txt
+- Pricing: https://www.scoutpost.ai/pricing
+- FAQ: https://www.scoutpost.ai/faq
+- Setup skill: https://www.scoutpost.ai/skills/cojournalist-setup.md
 
-Canonical URL: `https://www.cojournalist.ai/skills/cojournalist.md`
+Canonical URL: `https://www.scoutpost.ai/skills/cojournalist.md`
 
-Legacy compatibility URL: `https://www.cojournalist.ai/skill.md`
+Legacy compatibility URL: `https://www.scoutpost.ai/skill.md`
 
 ## 8. Public skill: setup
 
-# coJournalist setup skill
+# Scoutpost setup skill
 
-Use this skill when the user wants to deploy, self-host, install, or provision coJournalist on their own infrastructure.
+Use this skill when the user wants to deploy, self-host, install, or provision Scoutpost on their own infrastructure.
 
 This is **not** the day-to-day product-use skill. For operating scouts and units inside the hosted product, use:
 
-- https://www.cojournalist.ai/skills/cojournalist.md
+- https://www.scoutpost.ai/skills/cojournalist.md
 
 ## What this skill covers
 
@@ -139,4 +139,4 @@ This setup path walks an agent through:
 - Apify
 - static hosting for the frontend
 
-Canonical URL: `https://www.cojournalist.ai/skills/cojournalist-setup.md`
+Canonical URL: `https://www.scoutpost.ai/skills/cojournalist-setup.md`

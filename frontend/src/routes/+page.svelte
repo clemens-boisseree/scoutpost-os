@@ -523,7 +523,7 @@
 		<div class="topnav-left">
 			<div class="logo">
 				<span class="logo-dot"></span>
-				<span class="logo-text">coJournalist</span>
+				<span class="logo-text">Scoutpost</span>
 			</div>
 			<div class="new-scout-wrap">
 				<button

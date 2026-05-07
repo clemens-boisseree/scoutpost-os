@@ -105,7 +105,7 @@ def test_webhook_strips_hop_by_hop_and_authorization_but_keeps_custom():
             content=b"{}",
             headers={
                 "content-type": "application/json",
-                "host": "www.cojournalist.ai",
+                "host": "www.scoutpost.ai",
                 "authorization": "Bearer SHOULD-NOT-FORWARD",
                 "x-muckrock-signature": "keep-me",
                 "transfer-encoding": "chunked",

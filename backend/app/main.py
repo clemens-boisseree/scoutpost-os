@@ -225,7 +225,7 @@ class EmailStaticFiles(StaticFiles):
     """Tight static mount for email images only.
 
     Email templates (e.g. license-key onboarding) embed images via absolute
-    URLs like `https://www.cojournalist.ai/static/logo-cojournalist.png` so
+    URLs like `https://www.scoutpost.ai/static/logo-cojournalist.png` so
     Resend can fetch them at send time. Only allow image files at the root
     of the static directory — no subdirectories, no `.html`, no `.txt`, no
     hashed bundles under `_app/immutable/`. This prevents the `/static/`

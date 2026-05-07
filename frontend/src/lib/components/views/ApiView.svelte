@@ -28,7 +28,13 @@
 	const origin = typeof window !== 'undefined' ? window.location.origin : '';
 	const hostedBroker =
 		typeof window !== 'undefined' &&
-		['cojournalist.ai', 'www.cojournalist.ai', 'cojournalist.onrender.com'].includes(
+		[
+			'scoutpost.ai',
+			'www.scoutpost.ai',
+			'cojournalist.ai',
+			'www.cojournalist.ai',
+			'cojournalist.onrender.com'
+		].includes(
 			window.location.hostname
 		);
 	const apiBase = hostedBroker
@@ -43,7 +49,7 @@
 			: `${origin}/api/openapi.json`;
 	const projectRef = isSupabase ? getSupabaseProjectRef(supabaseUrl) : null;
 	const targetLabel = hostedBroker
-		? 'cojournalist.ai'
+		? 'scoutpost.ai'
 		: projectRef
 			? `Supabase project ${projectRef}`
 			: isSupabase

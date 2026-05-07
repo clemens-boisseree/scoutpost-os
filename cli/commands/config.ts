@@ -1,4 +1,4 @@
-// cojo config — manage ~/.cojournalist/config.json
+// scout config — manage ~/.scoutpost/config.json
 import {
   configPath,
   readConfigFile,
@@ -17,14 +17,14 @@ type Key = typeof VALID_KEYS[number];
 function usage(): void {
   console.log(
     [
-      "Usage: cojo config <subcommand>",
+      "Usage: scout config <subcommand>",
       "",
       "  get <key>            Print value of a config key",
       "  set <key>=<value>    Write key/value to config",
       "  show                 Show the full config (secrets redacted)",
       "",
       "Keys:",
-      "  api_url              Base URL for the cojo API (hosted broker or direct Supabase EF)",
+      "  api_url              Base URL for the scout API (hosted broker or direct Supabase EF)",
       "  auth_token           Bearer JWT (legacy SaaS / cookieless session)",
       "  api_key              cj_… API key — preferred over auth_token when set",
       "  supabase_anon_key    Supabase anon key — sent as `apikey:` header when",
@@ -77,7 +77,7 @@ export function run(argv: string[]): void {
   if (sub === "get") {
     const key = rest[0];
     if (!key || !VALID_KEYS.includes(key as Key)) {
-      console.error(`Usage: cojo config get <${VALID_KEYS.join("|")}>`);
+      console.error(`Usage: scout config get <${VALID_KEYS.join("|")}>`);
       Deno.exit(1);
     }
     const cfg = readConfigFile();
@@ -94,7 +94,7 @@ export function run(argv: string[]): void {
     const pair = rest.join(" ");
     const eq = pair.indexOf("=");
     if (eq < 0) {
-      console.error("Usage: cojo config set <key>=<value>");
+      console.error("Usage: scout config set <key>=<value>");
       Deno.exit(1);
     }
     const key = pair.slice(0, eq).trim();

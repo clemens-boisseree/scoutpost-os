@@ -148,16 +148,16 @@ To run the same check manually from a clean local Supabase stack:
 ```bash
 supabase start
 supabase db reset --local --yes
-supabase status -o env > /tmp/cojo-supabase.env
+supabase status -o env > /tmp/scout-supabase.env
 ```
 
 In another terminal:
 
 ```bash
 set -a
-source /tmp/cojo-supabase.env
+source /tmp/scout-supabase.env
 set +a
-COJO_SELFHOST_RUNTIME_SMOKE=1 deno test --allow-env --allow-net supabase/functions/_shared/selfhost_runtime_smoke_test.ts
+SCOUT_SELFHOST_RUNTIME_SMOKE=1 deno test --allow-env --allow-net supabase/functions/_shared/selfhost_runtime_smoke_test.ts
 ```
 
 If you changed `[auth.hook.before_user_created]` in `supabase/config.toml` on

@@ -1,4 +1,4 @@
-# `cojo-mcp` stdio bridge
+# `scout-mcp` stdio bridge
 
 
 ## General Answering Style
@@ -37,7 +37,7 @@ controls". Short version, re-stated so you don't miss it:
 ## Architecture
 
 ```
-MCP client (Claude Desktop) ──(stdio JSON-RPC)──> cojo-mcp ──(HTTPS + Bearer + apikey)──> Supabase Edge Function mcp-server
+MCP client (Claude Desktop) ──(stdio JSON-RPC)──> scout-mcp ──(HTTPS + Bearer + apikey)──> Supabase Edge Function mcp-server
 ```
 
 - Read newline-delimited JSON-RPC on stdin
@@ -57,16 +57,16 @@ jobs are (1) transport translation and (2) auth injection.
 Identical pattern to the CLI (see `cli/CLAUDE.md`):
 
 1. Pick a semver. First release: `0.1.0`.
-2. `git tag mcp-v0.1.0 -m "cojo-mcp 0.1.0 — initial release"`
+2. `git tag mcp-v0.1.0 -m "scout-mcp 0.1.0 — initial release"`
 3. `git push origin mcp-v0.1.0`
 4. `.github/workflows/mcp-release.yml` fires on the private monorepo:
    - 4 matrix builds (mac arm/x86, linux arm/x86)
    - macOS binaries are code-signed + notarized via the same Apple
-     Developer cert used for `cojo`
+     Developer cert used for `scout`
    - Release published on `buriedsignals/cojournalist-os` (public OSS
      mirror) with 4 binaries + 4 sha256 files, via `OSS_RELEASE_PAT`.
-5. Smoke test after public assets exist: `curl -fsSL https://github.com/buriedsignals/cojournalist-os/releases/latest/download/cojo-mcp-darwin-arm64 -o /tmp/cojo-mcp && chmod +x /tmp/cojo-mcp && /tmp/cojo-mcp --version`.
-   Until then, smoke test a source build from `mcp/`: `deno task compile-mac-arm && ./dist/cojo-mcp-darwin-arm64 --version`.
+5. Smoke test after public assets exist: `curl -fsSL https://github.com/buriedsignals/cojournalist-os/releases/latest/download/scout-mcp-darwin-arm64 -o /tmp/scout-mcp && chmod +x /tmp/scout-mcp && /tmp/scout-mcp --version`.
+   Until then, smoke test a source build from `mcp/`: `deno task compile-mac-arm && ./dist/scout-mcp-darwin-arm64 --version`.
 
 ## Tag naming
 
@@ -79,14 +79,14 @@ CI injects the version string into `mcp/lib/version.ts` via `sed` before
 
 ## Structure
 
-- `cojo-mcp.ts` — entry point; handles `--version` / `--help`, loads
+- `scout-mcp.ts` — entry point; handles `--version` / `--help`, loads
   config, kicks off the bridge loop.
 - `lib/bridge.ts` — `forwardOne` (single line) + `runBridge` (stdin loop).
 - `lib/config.ts` — config loader + `remoteUrl` + `remoteHeaders`.
-  Reads `~/.cojournalist/config.json` (same file as the cojo CLI) with
+  Reads `~/.scoutpost/config.json` (same file as the scout CLI) with
   env-var overrides.
 - `lib/version.ts` — `VERSION` constant rewritten by CI at release time.
-- `lib/_test.ts` — 18 unit tests (config + forwarder + integration).
+- `lib/_test.ts` — unit tests for config, forwarding, and integration.
 - `deno.json` — tasks: test, run, compile-mac-arm/x86, compile-linux-arm/x86, compile-all.
 
 ## Auth — reuses the CLI's config
@@ -95,11 +95,12 @@ CI injects the version string into `mcp/lib/version.ts` via `sed` before
   Agents → API. Sent as `Authorization: Bearer cj_…`.
 - `supabase_anon_key` — **required** when `api_url` is a Supabase host.
   Sent as the `apikey:` header. Without it, Kong rejects the request.
-- `api_url` — bare host. Trailing slash stripped. Default
-  `https://www.cojournalist.ai` if unset.
+- `api_url` — API base. Trailing slash stripped. Default
+  `https://www.scoutpost.ai/functions/v1` if unset.
 
-Env-var overrides: `COJOURNALIST_API_URL`, `COJOURNALIST_API_KEY`,
-`COJOURNALIST_SUPABASE_ANON_KEY` — same names the CLI already uses.
+Env-var overrides: `SCOUTPOST_API_URL`, `SCOUTPOST_API_KEY`,
+`SCOUTPOST_SUPABASE_ANON_KEY`. Legacy `COJOURNALIST_*` names are still
+accepted as a fallback.
 
 ## Why not embed the tools directly in the bridge?
 

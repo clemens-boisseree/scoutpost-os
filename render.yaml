@@ -26,8 +26,8 @@ services:
         sync: false
       - key: SUPABASE_JWT_SECRET
         sync: false
-      - key: SUPABASE_POST_LOGIN_REDIRECT
-        value: https://cojournalist.ai/auth/callback
+      - key: APP_POST_LOGIN_REDIRECT
+        value: https://www.scoutpost.ai/auth/callback
       # Webhook paused until PR 2a ships post-cutover
       - key: MUCKROCK_WEBHOOK_PAUSED
         value: "true"

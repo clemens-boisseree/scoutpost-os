@@ -1,4 +1,4 @@
-// cojo scouts — manage scouts
+// scout scouts — manage scouts
 import {
   apiFetch,
   parseArgs,
@@ -10,7 +10,7 @@ import {
 function usage(): void {
   console.log(
     [
-      "Usage: cojo scouts <subcommand>",
+      "Usage: scout scouts <subcommand>",
       "",
       "  list",
       "  add --name <name> --type <web|beat|social|civic> [--url <url>]",
@@ -275,7 +275,7 @@ export async function run(argv: string[]): Promise<void> {
     case "show": {
       const id = positional[0];
       if (!id) {
-        console.error("Usage: cojo scouts show <id>");
+        console.error("Usage: scout scouts show <id>");
         Deno.exit(1);
       }
       const scout = await apiFetch<Scout>(`/functions/v1/scouts/${id}`);
@@ -286,7 +286,7 @@ export async function run(argv: string[]): Promise<void> {
       const id = positional[0];
       if (!id) {
         console.error(
-          "Usage: cojo scouts update <id> [--name ...] [--topic ...] [--description ...] [--criteria ...] [--url ...] [--cron ...] [--active true|false]",
+          "Usage: scout scouts update <id> [--name ...] [--topic ...] [--description ...] [--criteria ...] [--url ...] [--cron ...] [--active true|false]",
         );
         Deno.exit(1);
       }
@@ -342,7 +342,7 @@ export async function run(argv: string[]): Promise<void> {
     case "resume": {
       const id = positional[0];
       if (!id) {
-        console.error(`Usage: cojo scouts ${sub} <id>`);
+        console.error(`Usage: scout scouts ${sub} <id>`);
         Deno.exit(1);
       }
       const res = await apiFetch(`/functions/v1/scouts/${id}/${sub}`, {
@@ -354,7 +354,7 @@ export async function run(argv: string[]): Promise<void> {
     case "delete": {
       const id = positional[0];
       if (!id) {
-        console.error("Usage: cojo scouts delete <id>");
+        console.error("Usage: scout scouts delete <id>");
         Deno.exit(1);
       }
       await apiFetch(`/functions/v1/scouts/${id}`, { method: "DELETE" });

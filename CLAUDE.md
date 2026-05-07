@@ -1,4 +1,4 @@
-# coJournalist
+# Scoutpost
 
 
 ## General Answering Style
@@ -79,9 +79,9 @@ The Vite/SvelteKit/Render env-var pipeline bit us **5+ times** during the v2 cut
 
 ```bash
 # What got baked into the SPA
-curl -s https://cojournalist.ai/_app/env.js
+curl -s https://www.scoutpost.ai/_app/env.js
 # What URL the api-client will call (look at any chunk + grep)
-curl -s "https://cojournalist.ai/_app/immutable/chunks/$(curl -s https://cojournalist.ai/ | grep -oE 'chunks/[A-Za-z0-9_-]+\.js' | head -1)" | grep -oE 'https://[^"]+supabase\.co[^"]*' | head -2
+curl -s "https://www.scoutpost.ai/_app/immutable/chunks/$(curl -s https://www.scoutpost.ai/ | grep -oE 'chunks/[A-Za-z0-9_-]+\.js' | head -1)" | grep -oE 'https://[^"]+supabase\.co[^"]*' | head -2
 ```
 
 ### When to break the rule
@@ -140,7 +140,7 @@ Do NOT:
 - make daily local auth depend on `supabase functions serve auth-muckrock`
 - make daily local auth depend on the already-deployed hosted broker
 - repoint production callback/base URLs to the localhost broker path
-- “simplify” local auth by sending the browser to `cojournalist.ai` mid-flow
+- “simplify” local auth by sending the browser to `scoutpost.ai` mid-flow
 
 ### If you touch auth, verify all of this
 
@@ -192,14 +192,14 @@ Keep Supabase integration tests small and direct. Do not build fixture-heavy loc
 
 AI-powered local news monitoring platform. Users create "scouts" that monitor websites, local news, or search queries on schedules, receiving email notifications when criteria are met. Scouts can be scoped by **location** (geo-targeted) or **topic** (keyword-based), or both.
 
-**Production URL:** `https://www.cojournalist.ai` — API at `/api/*`
+**Production URL:** `https://www.scoutpost.ai` — API at `/api/*`
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
 | Frontend | SvelteKit (static SPA), TailwindCSS |
-| Backend | FastAPI (Python), hosted on Render — production at `https://www.cojournalist.ai/api` |
+| Backend | FastAPI (Python), hosted on Render — production at `https://www.scoutpost.ai/api` |
 | Database | DynamoDB (scout metadata + run history) |
 | Scheduling | AWS EventBridge Scheduler |
 | Auth | MuckRock OAuth 2.0 (SaaS, session cookies) / Supabase Auth (OSS, Bearer JWT) |
@@ -280,11 +280,11 @@ Revenue reporting for MuckRock pilot invoicing. Accessible at `/api/admin/` (bro
 
 - `/aws/CLAUDE.md` - AWS infrastructure and Lambda details
 - `/backend/CLAUDE.md` - FastAPI structure and services
-- `/cli/CLAUDE.md` - `cojo` CLI release procedure and conventions
+- `/cli/CLAUDE.md` - `scout` CLI release procedure and conventions
 - `/frontend/CLAUDE.md` - SvelteKit components and stores
 - `/docs/CLAUDE.md` - Documentation structure and guidelines
 
-## CLI: `cojo`
+## CLI: `scout`
 
 Shipping product — a Deno-based CLI that talks to the REST API with a JWT
 bearer token or `cj_...` API key. Until public release assets exist, install
@@ -296,9 +296,9 @@ directly from the public mirror with Deno.
 - Pre-release suffixes (marked as prerelease on GitHub): `-rc1`, `-beta1`,
   `-alpha1`
 - Current install (anyone, no auth):
-  `deno install -A -g -n cojo https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/cojo.ts`
-- Planned binaries: `cojo-darwin-arm64`, `cojo-darwin-x86_64`,
-  `cojo-linux-arm64`, `cojo-linux-x86_64` — each with a sibling `.sha256`
+  `deno install -A -g -n scout https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/scout.ts`
+- Planned binaries: `scout-darwin-arm64`, `scout-darwin-x86_64`,
+  `scout-linux-arm64`, `scout-linux-x86_64` — each with a sibling `.sha256`
   file after the first public release is published.
 - Release workflow runs on the private monorepo (where signing secrets live)
   and publishes cross-repo via `OSS_RELEASE_PAT`.
@@ -395,7 +395,7 @@ CI runs automatically on push to `develop` and on PRs to `main`. See **Deploymen
 | `ci.yml` | Build, test, lint (4 required checks) | Push to `develop`, PR to `main` |
 | `claude.yml` | Claude PR assistant (`@claude` in issues/PRs) | Issue/PR comments |
 | `claude-code-review.yml` | Auto-review on PRs | PR opened/synchronized |
-| `cli-release.yml` | Build + sign + notarize + publish `cojo` CLI binaries | Push of `cli-v*` tag (or manual dispatch) |
+| `cli-release.yml` | Build + sign + notarize + publish `scout` CLI binaries | Push of `cli-v*` tag (or manual dispatch) |
 | `mirror-oss.yml` | Strip SaaS-only code and push to public OSS mirror | Push to `main` |
 
 ### Deploy pipeline

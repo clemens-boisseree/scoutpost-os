@@ -1,5 +1,5 @@
 /**
- * Unit tests for the cojo-mcp stdio bridge.
+ * Unit tests for the scout-mcp stdio bridge.
  *
  * Covers the invariants that keep the bridge dumb-forwarder trustworthy:
  *
@@ -26,13 +26,12 @@
  *    16. trailing line without newline still forwards on stdin close
  */
 
-import { assertEquals, assertRejects, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
-  ConfigDeps,
-  loadConfig,
-  remoteHeaders,
-  remoteUrl,
-} from "./config.ts";
+  assertEquals,
+  assertRejects,
+  assertStringIncludes,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { ConfigDeps, loadConfig, remoteHeaders, remoteUrl } from "./config.ts";
 import { forwardOne, runBridge } from "./bridge.ts";
 
 // ---------------------------------------------------------------------------
@@ -52,10 +51,14 @@ function makeDeps(
 Deno.test("config: env var beats config file", () => {
   const cfg = loadConfig(
     makeDeps(
-      { api_url: "https://file.example", api_key: "cj_file", supabase_anon_key: "" },
       {
-        COJOURNALIST_API_URL: "https://env.example",
-        COJOURNALIST_API_KEY: "cj_env",
+        api_url: "https://file.example",
+        api_key: "cj_file",
+        supabase_anon_key: "",
+      },
+      {
+        SCOUTPOST_API_URL: "https://env.example",
+        SCOUTPOST_API_KEY: "cj_env",
       },
     ),
   );
@@ -98,7 +101,11 @@ Deno.test("config: Supabase url without anon key → throws", () => {
     threw = true;
     assertStringIncludes((e as Error).message, "supabase_anon_key");
   }
-  if (!threw) throw new Error("expected loadConfig to throw for Supabase url without anon key");
+  if (!threw) {
+    throw new Error(
+      "expected loadConfig to throw for Supabase url without anon key",
+    );
+  }
 });
 
 Deno.test("config: Supabase url with anon key → loads", () => {
@@ -122,8 +129,21 @@ Deno.test("remoteUrl: appends /functions/v1/mcp-server/", () => {
   assertEquals(url, "https://x.supabase.co/functions/v1/mcp-server/");
 });
 
+Deno.test("remoteUrl: does not duplicate /functions/v1/", () => {
+  const url = remoteUrl({
+    apiUrl: "https://x.supabase.co/functions/v1",
+    apiKey: "cj_x",
+    supabaseAnonKey: "a",
+  });
+  assertEquals(url, "https://x.supabase.co/functions/v1/mcp-server/");
+});
+
 Deno.test("remoteHeaders: omits apikey when not set", () => {
-  const h = remoteHeaders({ apiUrl: "https://x.example", apiKey: "cj_x", supabaseAnonKey: "" });
+  const h = remoteHeaders({
+    apiUrl: "https://x.example",
+    apiKey: "cj_x",
+    supabaseAnonKey: "",
+  });
   assertEquals(h.Authorization, "Bearer cj_x");
   assertEquals(h.apikey, undefined);
 });
@@ -167,7 +187,10 @@ function discardStream(): WritableStream<Uint8Array> {
   return new WritableStream({ write() {} });
 }
 
-function captureStream(): { stream: WritableStream<Uint8Array>; chunks: string[] } {
+function captureStream(): {
+  stream: WritableStream<Uint8Array>;
+  chunks: string[];
+} {
   const chunks: string[] = [];
   const decoder = new TextDecoder();
   const stream = new WritableStream<Uint8Array>({
@@ -179,7 +202,8 @@ function captureStream(): { stream: WritableStream<Uint8Array>; chunks: string[]
 }
 
 Deno.test("forwardOne: request → returns remote body verbatim", async () => {
-  const remote = `{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}`;
+  const remote =
+    `{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}`;
   const fetchStub = stubFetchOk(remote);
   const out = await forwardOne(
     `{"jsonrpc":"2.0","id":1,"method":"initialize"}`,
@@ -190,7 +214,10 @@ Deno.test("forwardOne: request → returns remote body verbatim", async () => {
   const captured = (fetchStub as unknown as {
     captured: Array<{ url: string; init: RequestInit }>;
   }).captured;
-  assertEquals(captured[0].url, "https://x.supabase.co/functions/v1/mcp-server/");
+  assertEquals(
+    captured[0].url,
+    "https://x.supabase.co/functions/v1/mcp-server/",
+  );
   const headers = captured[0].init.headers as Record<string, string>;
   assertEquals(headers.Authorization, "Bearer cj_test");
   assertEquals(headers.apikey, "anon_test");
@@ -208,7 +235,10 @@ Deno.test("forwardOne: notification → returns null (no stdout)", async () => {
 
 Deno.test("forwardOne: parse error → JSON-RPC Parse error with id=null", async () => {
   const fetchStub = stubFetchOk(`{"should":"not be called"}`);
-  const out = await forwardOne(`not-json`, CFG, { fetch: fetchStub, stderr: discardStream() });
+  const out = await forwardOne(`not-json`, CFG, {
+    fetch: fetchStub,
+    stderr: discardStream(),
+  });
   const parsed = JSON.parse(out!);
   assertEquals(parsed.jsonrpc, "2.0");
   assertEquals(parsed.id, null);
@@ -311,7 +341,9 @@ Deno.test("runBridge: request + notification + request → two stdout lines", as
 });
 
 Deno.test("runBridge: trailing line without newline still forwards", async () => {
-  const fetchStub = stubFetchOk(`{"jsonrpc":"2.0","id":42,"result":{"ok":true}}`);
+  const fetchStub = stubFetchOk(
+    `{"jsonrpc":"2.0","id":42,"result":{"ok":true}}`,
+  );
   const stdin = stdinFrom([
     `{"jsonrpc":"2.0","id":42,"method":"tools/call"}`,
   ]);

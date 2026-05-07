@@ -75,7 +75,7 @@ async def call_openrouter(client, model_id, messages, max_tokens=500, temperatur
         "https://openrouter.ai/api/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {settings.openrouter_api_key}",
-            "HTTP-Referer": "https://cojournalist.ai",
+            "HTTP-Referer": "https://www.scoutpost.ai",
             "X-Title": "coJournalist",
             "Content-Type": "application/json",
         },

@@ -9,27 +9,27 @@
 			href: '/skills/cojournalist.md',
 			icon: Bot,
 			description:
-				'Use this when an AI assistant should operate coJournalist through MCP, CLI, or REST: create scouts, run monitors, search units, and respect editorial verification.'
+				'Use this when an AI assistant should operate Scoutpost through MCP, CLI, or REST: create scouts, run monitors, search units, and respect editorial verification.'
 		},
 		{
 			title: 'Setup skill',
 			href: '/skills/cojournalist-setup.md',
 			icon: Wrench,
 			description:
-				'Use this when an AI assistant should deploy or self-host coJournalist on newsroom infrastructure.'
+				'Use this when an AI assistant should deploy or self-host Scoutpost on newsroom infrastructure.'
 		}
 	];
 </script>
 
 <svelte:head>
-	<title>Skills — coJournalist</title>
+	<title>Skills — Scoutpost</title>
 	<meta
 		name="description"
-		content="Public coJournalist skill files for AI agents: product operation, MCP and CLI usage, and self-hosted setup."
+		content="Public Scoutpost skill files for AI agents: product operation, MCP and CLI usage, and self-hosted setup."
 	/>
 	<link rel="alternate" type="text/plain" title="skills.txt" href="/skills.txt" />
-	<link rel="alternate" type="text/markdown" title="coJournalist skill" href="/skills/cojournalist.md" />
-	<link rel="alternate" type="text/markdown" title="coJournalist setup skill" href="/skills/cojournalist-setup.md" />
+	<link rel="alternate" type="text/markdown" title="Scoutpost skill" href="/skills/cojournalist.md" />
+	<link rel="alternate" type="text/markdown" title="Scoutpost setup skill" href="/skills/cojournalist-setup.md" />
 </svelte:head>
 
 <div class="skills-page">
@@ -43,9 +43,9 @@
 
 		<header class="hero">
 			<span class="eyebrow">Agent resources</span>
-			<h1>coJournalist skills</h1>
+			<h1>Scoutpost skills</h1>
 			<p>
-				Public, machine-readable instructions for AI assistants working with coJournalist.
+				Public, machine-readable instructions for AI assistants working with Scoutpost.
 				Use the product skill for hosted accounts and the setup skill for self-hosted installs.
 			</p>
 		</header>
@@ -81,7 +81,7 @@
 				<h2>MCP endpoint</h2>
 			</div>
 			<p>
-				Hosted agents can connect to <code>https://www.cojournalist.ai/mcp</code>. The skill
+				Hosted agents can connect to <code>https://www.scoutpost.ai/mcp</code>. The skill
 				files explain the available tools and the expected scout, unit, and verification workflow.
 			</p>
 		</SharpPanel>

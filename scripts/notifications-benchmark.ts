@@ -21,8 +21,8 @@ const email = args[0] ?? "tom@buriedsignals.com";
 const language = args[1] ?? "en";
 const runs = Math.max(1, parseInt(args[2] ?? "1", 10) || 1);
 
-const FROM = "coJournalist <info@cojournalist.ai>";
-const REPLY_TO = "info@cojournalist.ai";
+const FROM = "Scoutpost <alerts@scoutpost.ai>";
+const REPLY_TO = "updates@scoutpost.ai";
 const RESEND_URL = "https://api.resend.com/emails";
 
 const resendKey = Deno.env.get("RESEND_API_KEY");

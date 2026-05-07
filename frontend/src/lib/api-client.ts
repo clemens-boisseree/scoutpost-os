@@ -746,7 +746,7 @@ export interface InformationUnit {
 // ===========================================================================
 //
 // The workspace UI (Plan 04) targets two backends behind a single
-// VITE_API_URL: the legacy FastAPI at cojournalist.ai (`{detail: ...}` errors,
+// VITE_API_URL: the legacy FastAPI at scoutpost.ai (`{detail: ...}` errors,
 // some `{data: [...]}` wrappers) and the Supabase Edge Functions at
 // `/functions/v1/*` (`{error, code}` errors, Edge Function paginated
 // envelopes shaped `{items, pagination}`). These helpers tolerate both shapes:

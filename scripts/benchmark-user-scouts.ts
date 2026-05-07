@@ -110,7 +110,7 @@ const results: CaseResult[] = [];
 console.log(`Target: ${cfg.api_url}`);
 console.log(`Prefix: ${prefix}`);
 console.log(
-  "Mode: user-auth smoke. This uses the configured cojo account, consumes " +
+  "Mode: user-auth smoke. This uses the configured scout account, consumes " +
     "real credits/provider quota, and cleans up completed scouts by default.",
 );
 
@@ -155,7 +155,7 @@ Options:
   --keep               Keep created scouts for inspection
 
 Notes:
-  Uses ~/.cojournalist/config.json through the same client as cojo.
+  Uses ~/.scoutpost/config.json through the same client as scout.
   Actor health uses deployed /social-test, so no local APIFY_API_TOKEN is needed.
   Social and civic creation establishes a baseline; a fresh Run Now may produce
   zero units by design. This script treats that as healthy when creation,

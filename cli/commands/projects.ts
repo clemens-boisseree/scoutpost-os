@@ -1,4 +1,4 @@
-// cojo projects — manage projects
+// scout projects — manage projects
 import {
   apiFetch,
   parseArgs,
@@ -10,7 +10,7 @@ import {
 function usage(): void {
   console.log(
     [
-      "Usage: cojo projects <subcommand>",
+      "Usage: scout projects <subcommand>",
       "",
       "  list",
       "  add --name <name> [--description <text>] [--visibility private|team]",
@@ -73,7 +73,7 @@ export async function run(argv: string[]): Promise<void> {
     case "show": {
       const id = positional[0];
       if (!id) {
-        console.error("Usage: cojo projects show <id>");
+        console.error("Usage: scout projects show <id>");
         Deno.exit(1);
       }
       const data = await apiFetch<Project>(`/functions/v1/projects/${id}`);
@@ -83,7 +83,7 @@ export async function run(argv: string[]): Promise<void> {
     case "delete": {
       const id = positional[0];
       if (!id) {
-        console.error("Usage: cojo projects delete <id>");
+        console.error("Usage: scout projects delete <id>");
         Deno.exit(1);
       }
       await apiFetch(`/functions/v1/projects/${id}`, { method: "DELETE" });

@@ -2,7 +2,7 @@
  * MCP stdio ↔ HTTP bridge core.
  *
  * Reads newline-delimited JSON-RPC 2.0 messages from stdin, forwards each
- * one (unchanged) to the remote coJournalist MCP Edge Function over HTTPS,
+ * one (unchanged) to the remote Scoutpost MCP Edge Function over HTTPS,
  * and writes the response back to stdout as newline-delimited JSON. Errors
  * from the forwarder become JSON-RPC error responses (stdout) so the MCP
  * client never sees broken framing. Non-protocol diagnostics go to stderr.
@@ -36,18 +36,27 @@ async function writeLine(
 ): Promise<void> {
   const writer = stream.getWriter();
   try {
-    await writer.write(new TextEncoder().encode(line.endsWith("\n") ? line : `${line}\n`));
+    await writer.write(
+      new TextEncoder().encode(line.endsWith("\n") ? line : `${line}\n`),
+    );
   } finally {
     writer.releaseLock();
   }
 }
 
-async function writeErrLine(stream: WritableStream<Uint8Array>, msg: string): Promise<void> {
+async function writeErrLine(
+  stream: WritableStream<Uint8Array>,
+  msg: string,
+): Promise<void> {
   await writeLine(stream, msg);
 }
 
 function rpcErrorFor(id: unknown, code: number, message: string): string {
-  return JSON.stringify({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
+  return JSON.stringify({
+    jsonrpc: "2.0",
+    id: id ?? null,
+    error: { code, message },
+  });
 }
 
 function isNotification(env: JsonRpcIdEnvelope): boolean {
@@ -72,7 +81,11 @@ export async function forwardOne(
     return rpcErrorFor(null, -32700, "Parse error: invalid JSON");
   }
   if (parsed.jsonrpc !== "2.0") {
-    return rpcErrorFor(parsed.id ?? null, -32600, "Invalid Request: jsonrpc must be 2.0");
+    return rpcErrorFor(
+      parsed.id ?? null,
+      -32600,
+      "Invalid Request: jsonrpc must be 2.0",
+    );
   }
 
   try {
@@ -90,7 +103,9 @@ export async function forwardOne(
       if (!res.ok) {
         await writeErrLine(
           deps.stderr,
-          `cojo-mcp: remote ${res.status} on notification ${String(parsed.method)}: ${text.slice(0, 400)}`,
+          `scout-mcp: remote ${res.status} on notification ${
+            String(parsed.method)
+          }: ${text.slice(0, 400)}`,
         );
       }
       return null;
@@ -99,7 +114,11 @@ export async function forwardOne(
     // Request — we need a response. If the body parses as JSON-RPC,
     // forward it verbatim. Otherwise wrap the transport failure.
     if (!text) {
-      return rpcErrorFor(parsed.id, -32603, `Remote returned empty body (HTTP ${res.status})`);
+      return rpcErrorFor(
+        parsed.id,
+        -32603,
+        `Remote returned empty body (HTTP ${res.status})`,
+      );
     }
     try {
       // Validate JSON by parsing, then return the original text to preserve
@@ -107,12 +126,19 @@ export async function forwardOne(
       JSON.parse(text);
       return text;
     } catch {
-      return rpcErrorFor(parsed.id, -32603, `Remote returned non-JSON body (HTTP ${res.status})`);
+      return rpcErrorFor(
+        parsed.id,
+        -32603,
+        `Remote returned non-JSON body (HTTP ${res.status})`,
+      );
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     if (isNotification(parsed)) {
-      await writeErrLine(deps.stderr, `cojo-mcp: transport error on notification: ${message}`);
+      await writeErrLine(
+        deps.stderr,
+        `scout-mcp: transport error on notification: ${message}`,
+      );
       return null;
     }
     return rpcErrorFor(parsed.id, -32603, `Transport error: ${message}`);
@@ -122,7 +148,10 @@ export async function forwardOne(
 /**
  * Run the bridge loop. Resolves when stdin closes or the signal aborts.
  */
-export async function runBridge(cfg: BridgeConfig, deps: BridgeDeps): Promise<void> {
+export async function runBridge(
+  cfg: BridgeConfig,
+  deps: BridgeDeps,
+): Promise<void> {
   const reader = deps.stdin
     .pipeThrough(new TextDecoderStream())
     .getReader();

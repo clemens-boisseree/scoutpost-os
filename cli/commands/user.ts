@@ -1,10 +1,10 @@
-// cojo user — current account state
+// scout user — current account state
 import { apiFetch, printJSON } from "../lib/client.ts";
 
 function usage(): void {
   console.log(
     [
-      "Usage: cojo user <subcommand>",
+      "Usage: scout user <subcommand>",
       "",
       "  me     Show the authenticated user's tier, credits, and team state",
     ].join("\n"),

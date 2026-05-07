@@ -27,7 +27,7 @@ import { jsonError, jsonFromError, jsonOk } from "../_shared/responses.ts";
 import { AuthError } from "../_shared/errors.ts";
 import { logEvent } from "../_shared/log.ts";
 
-const EMAIL_FROM = "coJournalist <alerts@cojournalist.ai>";
+const EMAIL_FROM = "Scoutpost <alerts@scoutpost.ai>";
 const EMAIL_SUBJECT = "\u26A0\uFE0F Scout health digest";
 
 interface PausedScout {

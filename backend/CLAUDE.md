@@ -13,13 +13,13 @@ Never praise my questions or validate my premises before answering. If I'm wrong
 > search, social/civic orchestrators, scheduling, and scout CRUD into Supabase
 > Edge Functions. This FastAPI service is now a **thin residual** that handles
 > auth brokering, MuckRock OAuth proxying, the `/api/v1` public API for the
-> `cojo` CLI, the Linear feedback widget, the admin dashboard, license keys,
+> `scout` CLI, the Linear feedback widget, the admin dashboard, license keys,
 > and a small set of legacy endpoints that haven't been migrated yet.
 >
 > For the authoritative live surface see `docs/architecture/api-surface-audit.md`.
 > For Supabase Edge Functions see `docs/supabase/edge-functions.md`.
 
-Python FastAPI backend hosted on Render at `https://www.cojournalist.ai/api/*`.
+Python FastAPI backend hosted on Render at `https://www.scoutpost.ai/api/*`.
 
 ## Live routers (`backend/app/routers/*`)
 
@@ -136,4 +136,4 @@ See `backend/tests/CLAUDE.md` for layout and mocking conventions.
 - `docs/supabase/architecture-overview.md` — who-calls-what diagram for the EF side
 - `docs/supabase/edge-functions.md` — every Edge Function
 - `docs/oss/adapter-pattern.md` — port/adapter design (with post-cutover banner)
-- `cli/CLAUDE.md` — `cojo` CLI release + auth precedence
+- `cli/CLAUDE.md` — `scout` CLI release + auth precedence

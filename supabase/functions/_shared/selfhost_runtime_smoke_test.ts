@@ -5,7 +5,8 @@ import {
 } from "https://deno.land/std@0.208.0/assert/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const enabled = Deno.env.get("COJO_SELFHOST_RUNTIME_SMOKE") === "1";
+const enabled = Deno.env.get("SCOUT_SELFHOST_RUNTIME_SMOKE") === "1" ||
+  Deno.env.get("COJO_SELFHOST_RUNTIME_SMOKE") === "1";
 
 function envAny(...names: string[]): string {
   for (const name of names) {
@@ -16,7 +17,12 @@ function envAny(...names: string[]): string {
 }
 
 function assertLocalTarget(url: string) {
-  if (Deno.env.get("COJO_ALLOW_REMOTE_SELFHOST_SMOKE") === "1") return;
+  if (
+    Deno.env.get("SCOUT_ALLOW_REMOTE_SELFHOST_SMOKE") === "1" ||
+    Deno.env.get("COJO_ALLOW_REMOTE_SELFHOST_SMOKE") === "1"
+  ) {
+    return;
+  }
 
   const hostname = new URL(url).hostname;
   if (

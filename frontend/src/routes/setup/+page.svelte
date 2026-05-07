@@ -71,7 +71,7 @@
 
 Expected local files:
 - ./cojournalist-setup.json
-- automation/setup-from-manifest.sh in the coJournalist repository
+- automation/setup-from-manifest.sh in the Scoutpost repository
 
 Run the manifest installer from the repository root. Never ask the operator to paste API keys, JWT secrets, service role keys, or deploy hooks into chat.`;
 	$: onboardingDoc = buildNewsroomOnboarding(manifest);
@@ -214,10 +214,10 @@ Run the manifest installer from the repository root. Never ask the operator to p
 </script>
 
 <svelte:head>
-	<title>Self-host setup - coJournalist</title>
+	<title>Self-host setup — Scoutpost</title>
 	<meta
 		name="description"
-		content="Generate a self-hosted coJournalist installer without pasting secrets into AI chat."
+		content="Generate a self-hosted Scoutpost installer without pasting secrets into AI chat."
 	/>
 </svelte:head>
 
@@ -490,7 +490,7 @@ Run the manifest installer from the repository root. Never ask the operator to p
 						<label>
 							<input type="checkbox" bind:checked={installSyncWorkflow} />
 							<span>
-								Keep this fork updated from coJournalist OSS
+								Keep this fork updated from Scoutpost OSS
 								<small>
 									Adds a weekly GitHub workflow that merges upstream code. For automatic Supabase
 									migrations, add a GitHub secret named SUPABASE_ACCESS_TOKEN.

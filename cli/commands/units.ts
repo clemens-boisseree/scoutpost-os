@@ -1,10 +1,10 @@
-// cojo units — information unit management
+// scout units — information unit management
 import { apiFetch, parseArgs, printJSON, printTable } from "../lib/client.ts";
 
 function usage(): void {
   console.log(
     [
-      "Usage: cojo units <subcommand>",
+      "Usage: scout units <subcommand>",
       "",
       "  list [--project <id>] [--scout <id>] [--verified|--unverified]",
       "       [--used|--unused] [--include-deleted]",
@@ -14,7 +14,7 @@ function usage(): void {
       "  reject <id> [--notes <text>]",
       "  mark-used <id> [--url <published-url>]",
       "  delete <id>",
-      "  search --query \"<text>\" [--mode semantic|keyword|hybrid]",
+      '  search --query "<text>" [--mode semantic|keyword|hybrid]',
       "         [--project <id>] [--scout <id>] [--verified|--unverified]",
       "         [--used|--unused] [--include-deleted] [--limit N]",
     ].join("\n"),
@@ -111,7 +111,7 @@ export async function run(argv: string[]): Promise<void> {
     case "show": {
       const id = positional[0];
       if (!id) {
-        console.error("Usage: cojo units show <id>");
+        console.error("Usage: scout units show <id>");
         Deno.exit(1);
       }
       const unit = await apiFetch<Unit>(`/functions/v1/units/${id}`);
@@ -144,7 +144,7 @@ export async function run(argv: string[]): Promise<void> {
     case "verify": {
       const id = positional[0];
       if (!id) {
-        console.error("Usage: cojo units verify <id> [--notes] [--by]");
+        console.error("Usage: scout units verify <id> [--notes] [--by]");
         Deno.exit(1);
       }
       const body: Record<string, unknown> = { verified: true };
@@ -162,7 +162,7 @@ export async function run(argv: string[]): Promise<void> {
     case "reject": {
       const id = positional[0];
       if (!id) {
-        console.error("Usage: cojo units reject <id> [--notes]");
+        console.error("Usage: scout units reject <id> [--notes]");
         Deno.exit(1);
       }
       const body: Record<string, unknown> = { verified: false };
@@ -179,7 +179,7 @@ export async function run(argv: string[]): Promise<void> {
     case "mark-used": {
       const id = positional[0];
       if (!id) {
-        console.error("Usage: cojo units mark-used <id> [--url]");
+        console.error("Usage: scout units mark-used <id> [--url]");
         Deno.exit(1);
       }
       const body: Record<string, unknown> = {
@@ -197,7 +197,7 @@ export async function run(argv: string[]): Promise<void> {
     case "delete": {
       const id = positional[0];
       if (!id) {
-        console.error("Usage: cojo units delete <id>");
+        console.error("Usage: scout units delete <id>");
         Deno.exit(1);
       }
       await apiFetch(`/functions/v1/units/${id}`, { method: "DELETE" });

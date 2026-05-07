@@ -154,6 +154,7 @@ sed -i "s|https://accounts.muckrock.com/[^'\`]*|#|g" frontend/src/lib/components
 # code in OSS since PUBLIC_MUCKROCK_ENABLED is never true there, but the
 # URL still appears in the source and fails the OSS mirror grep check).
 sed_if_exists -i 's|https://accounts.muckrock.com/[^"]*|#|g' frontend/src/routes/login/+page.svelte
+sed_if_exists -i 's|MuckRock and Supabase|Supabase|g' frontend/src/routes/terms/+page.svelte
 # Remove UpgradeModal and all credit-gating logic (no credits in OSS)
 rm -f frontend/src/lib/components/modals/UpgradeModal.svelte
 
@@ -451,7 +452,7 @@ ENV PUBLIC_LOCAL_DEMO_MODE=${PUBLIC_LOCAL_DEMO_MODE}
         p.write_text(text)
 PY
 
-sed_if_exists -i "s|https://${HOSTED_SUPABASE_REF}.supabase.co/functions/v1|https://www.cojournalist.ai/functions/v1|g" supabase/functions/openapi-spec/spec.json
+sed_if_exists -i "s|https://${HOSTED_SUPABASE_REF}.supabase.co/functions/v1|https://www.scoutpost.ai/functions/v1|g" supabase/functions/openapi-spec/spec.json
 sed_if_exists -i "s|${HOSTED_SUPABASE_REF}|<project-ref>|g" scripts/deploy-functions.sh
 
 # -------------------------------------------------------------------

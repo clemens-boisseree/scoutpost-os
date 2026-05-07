@@ -1,14 +1,14 @@
-# coJournalist overview
+# Scoutpost overview
 
-> coJournalist is AI-powered monitoring infrastructure for journalists. It runs scouts on schedules, watches public sources, extracts atomic facts, deduplicates across sources, and hands the results to journalists and AI assistants as a searchable knowledge base with an explicit verification step.
+> Scoutpost is AI-powered monitoring infrastructure for journalists. It runs scouts on schedules, watches public sources, extracts atomic facts, deduplicates across sources, and hands the results to journalists and AI assistants as a searchable knowledge base with an explicit verification step.
 
-coJournalist is built for local and investigative reporting. The public product story is:
+Scoutpost is built for local and investigative reporting. The public product story is:
 
 - Watch pages, social profiles, local news, and council sites without living in tabs and feeds.
 - Turn recurring monitoring into structured information units instead of chat transcripts.
 - Let agents draft, triage, and search while journalists remain the verifier.
-- Work through the web app, MCP, REST API, and the `cojo` CLI.
-- Stay portable: hosted at cojournalist.ai, source-available, and self-hostable.
+- Work through the web app, MCP, REST API, and the `scout` CLI.
+- Stay portable: hosted at scoutpost.ai, source-available, and self-hostable.
 
 ## Core benefits
 
@@ -27,11 +27,11 @@ coJournalist is built for local and investigative reporting. The public product 
 
 ## Start here
 
-- App and sign-in: https://www.cojournalist.ai/login
-- Documentation: https://www.cojournalist.ai/docs
-- Docs in text form: https://www.cojournalist.ai/docs.txt
-- Skills index: https://www.cojournalist.ai/skills
-- Product skill: https://www.cojournalist.ai/skills/cojournalist.md
-- Setup skill: https://www.cojournalist.ai/skills/cojournalist-setup.md
-- llms.txt: https://www.cojournalist.ai/llms.txt
-- Full flattened docs: https://www.cojournalist.ai/llms-full.txt
+- App and sign-in: https://www.scoutpost.ai/login
+- Documentation: https://www.scoutpost.ai/docs
+- Docs in text form: https://www.scoutpost.ai/docs.txt
+- Skills index: https://www.scoutpost.ai/skills
+- Product skill: https://www.scoutpost.ai/skills/cojournalist.md
+- Setup skill: https://www.scoutpost.ai/skills/cojournalist-setup.md
+- llms.txt: https://www.scoutpost.ai/llms.txt
+- Full flattened docs: https://www.scoutpost.ai/llms-full.txt

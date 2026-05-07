@@ -445,7 +445,7 @@ async function sendReportEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "coJournalist <noreply@cojournalist.ai>",
+      from: "Scoutpost <noreply@scoutpost.ai>",
       to: admins,
       subject,
       html,

@@ -49,7 +49,7 @@ if (!Deno.env.get("MCP_STATE_SECRET")) {
 
 Deno.test("metadata: issuer and endpoints use MCP_SERVER_BASE_URL when set", async () => {
   const original = Deno.env.get("MCP_SERVER_BASE_URL");
-  Deno.env.set("MCP_SERVER_BASE_URL", "https://www.cojournalist.ai/mcp/");
+  Deno.env.set("MCP_SERVER_BASE_URL", "https://www.scoutpost.ai/mcp/");
   try {
     const res = metadataHandler(
       new Request(
@@ -58,15 +58,15 @@ Deno.test("metadata: issuer and endpoints use MCP_SERVER_BASE_URL when set", asy
     );
     assertEquals(res.status, 200);
     const body = await res.json();
-    assertEquals(body.issuer, "https://www.cojournalist.ai/mcp");
+    assertEquals(body.issuer, "https://www.scoutpost.ai/mcp");
     assertEquals(
       body.authorization_endpoint,
-      "https://www.cojournalist.ai/mcp/authorize",
+      "https://www.scoutpost.ai/mcp/authorize",
     );
-    assertEquals(body.token_endpoint, "https://www.cojournalist.ai/mcp/token");
+    assertEquals(body.token_endpoint, "https://www.scoutpost.ai/mcp/token");
     assertEquals(
       body.registration_endpoint,
-      "https://www.cojournalist.ai/mcp/register",
+      "https://www.scoutpost.ai/mcp/register",
     );
   } finally {
     if (original === undefined) Deno.env.delete("MCP_SERVER_BASE_URL");
@@ -76,22 +76,22 @@ Deno.test("metadata: issuer and endpoints use MCP_SERVER_BASE_URL when set", asy
 
 Deno.test("metadata: protected resource advertises same MCP resource", async () => {
   const original = Deno.env.get("MCP_SERVER_BASE_URL");
-  Deno.env.set("MCP_SERVER_BASE_URL", "https://www.cojournalist.ai/mcp/");
+  Deno.env.set("MCP_SERVER_BASE_URL", "https://www.scoutpost.ai/mcp/");
   try {
     const res = protectedResourceHandler(
       new Request("https://ignored.test/.well-known/oauth-protected-resource"),
     );
     assertEquals(res.status, 200);
     const body = await res.json();
-    assertEquals(body.resource, "https://www.cojournalist.ai/mcp");
+    assertEquals(body.resource, "https://www.scoutpost.ai/mcp");
     assertEquals(body.authorization_servers, [
-      "https://www.cojournalist.ai/mcp",
+      "https://www.scoutpost.ai/mcp",
     ]);
     assertEquals(body.bearer_methods_supported, ["header"]);
     assertEquals(body.scopes_supported, ["mcp"]);
     assertEquals(
       body.resource_documentation,
-      "https://www.cojournalist.ai/skills/cojournalist.md",
+      "https://www.scoutpost.ai/skills/cojournalist.md",
     );
   } finally {
     if (original === undefined) Deno.env.delete("MCP_SERVER_BASE_URL");
@@ -156,7 +156,7 @@ Deno.test("rpc: initialize without bearer returns HTTP 401 with WWW-Authenticate
   // DCR + the OAuth flow on the very first probe instead of forcing the
   // user to disconnect+reconnect to trigger auth.
   const original = Deno.env.get("MCP_SERVER_BASE_URL");
-  Deno.env.set("MCP_SERVER_BASE_URL", "https://www.cojournalist.ai/mcp");
+  Deno.env.set("MCP_SERVER_BASE_URL", "https://www.scoutpost.ai/mcp");
   try {
     const res = await handleRequest(
       new Request("https://example.test/", {
@@ -179,7 +179,7 @@ Deno.test("rpc: initialize without bearer returns HTTP 401 with WWW-Authenticate
     assertStringIncludes(wwwAuth, "Bearer");
     assertStringIncludes(
       wwwAuth,
-      `resource_metadata="https://www.cojournalist.ai/mcp/.well-known/oauth-protected-resource"`,
+      `resource_metadata="https://www.scoutpost.ai/mcp/.well-known/oauth-protected-resource"`,
     );
     await res.body?.cancel();
   } finally {
@@ -217,7 +217,7 @@ Deno.test("rpc: negotiateProtocolVersion echoes supported and falls back otherwi
 
 Deno.test("rpc: tools/list without bearer returns HTTP 401 with WWW-Authenticate", async () => {
   const original = Deno.env.get("MCP_SERVER_BASE_URL");
-  Deno.env.set("MCP_SERVER_BASE_URL", "https://www.cojournalist.ai/mcp");
+  Deno.env.set("MCP_SERVER_BASE_URL", "https://www.scoutpost.ai/mcp");
   try {
     const res = await handleRequest(
       new Request("https://example.test/", {
@@ -237,7 +237,7 @@ Deno.test("rpc: tools/list without bearer returns HTTP 401 with WWW-Authenticate
     assertStringIncludes(wwwAuth, "Bearer");
     assertStringIncludes(
       wwwAuth,
-      `resource_metadata="https://www.cojournalist.ai/mcp/.well-known/oauth-protected-resource"`,
+      `resource_metadata="https://www.scoutpost.ai/mcp/.well-known/oauth-protected-resource"`,
     );
     await res.body?.cancel();
   } finally {

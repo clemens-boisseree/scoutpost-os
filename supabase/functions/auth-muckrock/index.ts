@@ -34,14 +34,13 @@
  *   EMAIL_ALLOWLIST (optional) — comma-separated emails / @domain patterns
  *
  * redirect_uri registered with MuckRock (client 879742):
- *   production:  https://cojournalist.ai/api/auth/callback   (apex — NOT www)
+ *   production:  https://www.scoutpost.ai/api/auth/callback
  *   development: http://localhost:5173/api/auth/callback
  * Production requests proxy through the Render backend at
  * backend/app/routers/muckrock_proxy.py which 302s to this EF's /callback.
- * The `MUCKROCK_CALLBACK_URL` EF secret is set to the apex string so
+ * The `MUCKROCK_CALLBACK_URL` EF secret is set to the production string so
  * callbackUrl() returns it on both the authorize and token-exchange calls
- * (RFC 6749 §4.1.3 byte-match). Do NOT change to `www.cojournalist.ai` —
- * MuckRock will reject with "Redirect URI Error".
+ * (RFC 6749 §4.1.3 byte-match).
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -82,10 +81,9 @@ function stripPrefix(pathname: string): string {
 
 function callbackUrl(): string {
   // MUST match the redirect_uri registered with MuckRock's OAuth client.
-  // We keep MuckRock pointing at the pre-cutover cojournalist.ai URL
-  // (no OAuth client reconfiguration needed) and proxy that URL on the
-  // Render backend to this EF — see backend/app/routers/muckrock_proxy.py
-  // for the 302 that preserves the signed `state` byte-for-byte.
+  // The public app URL proxies /api/auth/callback through the Render backend
+  // to this EF — see backend/app/routers/muckrock_proxy.py for the 302 that
+  // preserves the signed `state` byte-for-byte.
   //
   // If you ever want to switch MuckRock to register the Supabase URL
   // directly, override MUCKROCK_CALLBACK_URL on the EF.

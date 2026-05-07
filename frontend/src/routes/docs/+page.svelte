@@ -96,11 +96,11 @@
 		observer?.disconnect();
 	});
 
-	const mcpOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://www.cojournalist.ai';
+	const mcpOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://www.scoutpost.ai';
 	$: mcpConfig = JSON.stringify(
 		{
 			mcpServers: {
-				cojournalist: {
+				scoutpost: {
 					url: `${mcpOrigin}/mcp`,
 					transport: 'http'
 				}
@@ -112,16 +112,16 @@
 </script>
 
 <svelte:head>
-	<title>Docs — coJournalist</title>
+	<title>Docs — Scoutpost</title>
 	<meta
 		name="description"
-		content="Reference for the coJournalist scouts API — MCP, REST, and CLI integrations for connecting your AI agent to monitoring jobs."
+		content="Reference for the Scoutpost scouts API — MCP, REST, and CLI integrations for connecting your AI agent to monitoring jobs."
 	/>
 	<link rel="alternate" type="text/plain" title="docs.txt" href="/docs.txt" />
 	<link rel="alternate" type="text/plain" title="llms.txt" href="/llms.txt" />
 	<link rel="alternate" type="text/plain" title="llms-full.txt" href="/llms-full.txt" />
-	<link rel="alternate" type="text/markdown" title="coJournalist skill" href="/skills/cojournalist.md" />
-	<link rel="alternate" type="text/markdown" title="coJournalist setup skill" href="/skills/cojournalist-setup.md" />
+	<link rel="alternate" type="text/markdown" title="Scoutpost skill" href="/skills/cojournalist.md" />
+	<link rel="alternate" type="text/markdown" title="Scoutpost setup skill" href="/skills/cojournalist-setup.md" />
 </svelte:head>
 
 <div class="docs">
@@ -186,9 +186,9 @@
 			<article>
 				<header class="hero">
 					<span class="eyebrow">Documentation</span>
-					<h1>coJournalist for humans and AI assistants</h1>
+					<h1>Scoutpost for humans and AI assistants</h1>
 					<p class="lede">
-						coJournalist is monitoring infrastructure for journalists. It watches websites, local
+						Scoutpost, formerly coJournalist, is monitoring infrastructure for journalists. It watches websites, local
 						news, social profiles, and council agendas on schedules you define, extracts atomic
 						facts, de-duplicates across sources, and hands the results to you — or to your AI
 						assistant — as a searchable knowledge base.
@@ -229,11 +229,11 @@
 				<section id="intro">
 					<h2>Introduction</h2>
 					<p>
-						coJournalist turns three tedious parts of reporting into background infrastructure:
+						Scoutpost turns three tedious parts of reporting into background infrastructure:
 						<strong>noticing</strong> that a page changed,
 						<strong>understanding</strong> whether the change matters, and
 						<strong>remembering</strong> what you already knew. You define a <em>scout</em> — a
-						URL, a location, a social handle, a council domain — and coJournalist runs it on a
+						URL, a location, a social handle, a council domain — and Scoutpost runs it on a
 						schedule, extracts structured information, and drops the results into a knowledge
 						graph you own.
 					</p>
@@ -277,8 +277,8 @@
 							<div>
 								<h4>Sign in</h4>
 								<p>
-									Open <a href="https://www.cojournalist.ai" target="_blank" rel="noopener noreferrer"
-										>cojournalist.ai</a
+									Open <a href="https://www.scoutpost.ai" target="_blank" rel="noopener noreferrer"
+										>scoutpost.ai</a
 									>
 									and sign in with your email address.
 								</p>
@@ -492,14 +492,14 @@
 						</SharpPanel>
 						<SharpPanel href="#cli" className="surface">
 							<div class="surface-icon"><Terminal size={18} /></div>
-							<h4>CLI (<code>cojo</code>)</h4>
+							<h4>CLI (<code>scout</code>)</h4>
 							<p>Deno-based binary for terminal workflows and shell automation.</p>
 						</SharpPanel>
 					</div>
 
 					<h3 id="mcp">MCP server</h3>
 					<p>
-						coJournalist ships an embedded MCP server with its own OAuth 2.1 authorization server
+						Scoutpost ships an embedded MCP server with its own OAuth 2.1 authorization server
 						(RFC 8414 metadata + RFC 7591 dynamic registration). Your MCP client handles the full
 						OAuth dance — you never paste tokens. The endpoint is:
 					</p>
@@ -535,7 +535,7 @@
 
 					<h3 id="rest">REST API</h3>
 					<p>
-						Base URL: <code>https://www.cojournalist.ai/functions/v1</code>. Auth via a
+						Base URL: <code>https://www.scoutpost.ai/functions/v1</code>. Auth via a
 						<code>cj_…</code> API key (create one in the in-app <strong>Agents → API</strong> modal) sent
 						as <code>Authorization: Bearer cj_…</code>. Full OpenAPI 3.1 spec at
 						<a href="/swagger">/swagger</a>; raw JSON at <code>/functions/v1/openapi-spec</code>.
@@ -543,10 +543,10 @@
 
 					<SharpCodeBlock
 						ariaLabel="Copy curl example"
-						code={`curl https://www.cojournalist.ai/functions/v1/scouts \\
+						code={`curl https://www.scoutpost.ai/functions/v1/scouts \\
   -H "Authorization: Bearer $COJO_TOKEN"
 
-curl "https://www.cojournalist.ai/functions/v1/units?verified=false&limit=20" \\
+curl "https://www.scoutpost.ai/functions/v1/units?verified=false&limit=20" \\
   -H "Authorization: Bearer $COJO_TOKEN"`}
 					/>
 
@@ -558,28 +558,28 @@ curl "https://www.cojournalist.ai/functions/v1/units?verified=false&limit=20" \\
 
 					<h3 id="cli">CLI</h3>
 					<p>
-						<code>cojo</code> is a tiny Deno-based binary that speaks the same REST API. Useful for
+						<code>scout</code> is a tiny Deno-based binary that speaks the same REST API. Useful for
 						shell pipelines, nightly scripts, and direct unit triage workflows.
 					</p>
 
 					<SharpCodeBlock
 						ariaLabel="Copy CLI install"
-						copyValue={`deno install -A -g -n cojo https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/cojo.ts
-cojo config set api_url=https://www.cojournalist.ai/functions/v1
-cojo config set api_key=<cj_... API key>
-cojo scouts list`}
+						copyValue={`deno install -A -g -n scout https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/scout.ts
+scout config set api_url=https://www.scoutpost.ai/functions/v1
+scout config set api_key=<cj_... API key>
+scout scouts list`}
 						code={`# Install (requires Deno 2.x)
-deno install -A -g -n cojo https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/cojo.ts
+deno install -A -g -n scout https://raw.githubusercontent.com/buriedsignals/cojournalist-os/master/cli/scout.ts
 
 # Configure (generate a cj_... API key in the app: Agents → API → Create key)
-cojo config set api_url=https://www.cojournalist.ai/functions/v1
-cojo config set api_key=<cj_... API key>
+scout config set api_url=https://www.scoutpost.ai/functions/v1
+scout config set api_key=<cj_... API key>
 
 # Use
-cojo scouts list
-cojo units list --verified
-cojo units verify <id> --notes "Cross-checked with minutes"
-cojo units search --query "zoning variance" --mode hybrid --project <id>`}
+scout scouts list
+scout units list --verified
+scout units verify <id> --notes "Cross-checked with minutes"
+scout units search --query "zoning variance" --mode hybrid --project <id>`}
 					/>
 				</section>
 
@@ -638,10 +638,10 @@ cojo units search --query "zoning variance" --mode hybrid --project <id>`}
 					<h3 id="recipe-lifecycle">Manage unit lifecycle</h3>
 					<SharpPanel className="recipe">
 <pre><code>{`# Mark facts as published once they make it into a story
-cojo units mark-used <unit-id> --url https://cms.example.com/story/slug
+scout units mark-used <unit-id> --url https://cms.example.com/story/slug
 
 # Soft-delete facts you want out of the active pool
-cojo units delete <unit-id>`}</code></pre>
+scout units delete <unit-id>`}</code></pre>
 						<p class="recipe-note">
 							Agents can keep working from the same searchable unit pool while these lifecycle
 							flags track what has been reviewed, published, or removed.
@@ -663,9 +663,9 @@ cojo units delete <unit-id>`}</code></pre>
 								</tr>
 							</thead>
 							<tbody>
-								<tr><td>App</td><td><code>https://www.cojournalist.ai</code></td></tr>
-								<tr><td>REST API</td><td><code>https://www.cojournalist.ai/functions/v1</code></td></tr>
-								<tr><td>MCP server</td><td><code>https://www.cojournalist.ai/mcp</code></td></tr>
+								<tr><td>App</td><td><code>https://www.scoutpost.ai</code></td></tr>
+								<tr><td>REST API</td><td><code>https://www.scoutpost.ai/functions/v1</code></td></tr>
+								<tr><td>MCP server</td><td><code>https://www.scoutpost.ai/mcp</code></td></tr>
 								<tr><td>OpenAPI spec</td><td><code>/functions/v1/openapi-spec</code> (JSON)</td></tr>
 								<tr><td>Swagger UI</td><td><a href="/swagger">/swagger</a></td></tr>
 								<tr><td>llms.txt</td><td><a href="/llms.txt">/llms.txt</a></td></tr>
@@ -756,7 +756,7 @@ cojo units delete <unit-id>`}</code></pre>
 				<section id="selfhost">
 					<h2>Self-hosting</h2>
 					<p>
-						coJournalist is source-available under the
+						Scoutpost is source-available under the
 						<a href="/faq">Sustainable Use License</a> — use it for your newsroom freely, don't
 						resell it as a service. Self-hosted deployments run on your own Supabase project with
 						your Firecrawl, Gemini, Apify, and Resend keys. Same feature set as SaaS. No telemetry.
@@ -794,7 +794,7 @@ cojo units delete <unit-id>`}</code></pre>
 				</section>
 
 				<footer class="foot">
-					<a href={backHref} class="foot-link">← Back to coJournalist</a>
+					<a href={backHref} class="foot-link">← Back to Scoutpost</a>
 					<a
 						href="https://github.com/buriedsignals/cojournalist-os"
 						target="_blank"

@@ -8,7 +8,7 @@ Two layers in front of the database, plus a separate broker for the MuckRock OID
 User browser / Anthropic backend
         │
         ▼
-Cloudflare ──► Render (FastAPI on uvicorn, https://www.cojournalist.ai)
+Cloudflare ──► Render (FastAPI on uvicorn, https://www.scoutpost.ai)
                         │
                         ├── /.well-known/oauth-authorization-server               ─► self-served by FastAPI
                         ├── /.well-known/oauth-protected-resource                 ─► self-served by FastAPI
@@ -34,7 +34,7 @@ Cloudflare ──► Render (FastAPI on uvicorn, https://www.cojournalist.ai)
 
 1. **The public URL stays canonical.** Issuer in OAuth metadata, `resource` in protected-resource metadata, `WWW-Authenticate: Bearer resource_metadata=…` all need to advertise the same host MCP clients pasted. If we sent clients straight to `<project-ref>.supabase.co` they would either reject the issuer mismatch or hard-bind to the Supabase host (worse, since we lose the rebrand path for self-hosters).
 2. **RFC 9728 §3.1 path-suffix well-knowns can be served as JSON.** The path-suffixed forms (`/.well-known/oauth-protected-resource/mcp`) sit on the *root* domain, not under `/mcp`. Without explicit handlers in FastAPI they fall through to SvelteKit's SPA fallback and return `text/html` 200 — Anthropic parses that as JSON, fails silently, and aborts the connect with `step=start_error`. The proxy registers explicit handlers for these paths with a path-tail allowlist so we don't advertise OAuth metadata for arbitrary URLs.
-3. **Cookies stay first-party.** The MuckRock session cookie was issued on `cojournalist.ai`; sending users to `supabase.co` mid-flow would lose it.
+3. **Cookies stay first-party.** The MuckRock session cookie was issued on `scoutpost.ai`; sending users to `supabase.co` mid-flow would lose it.
 4. **Future migration.** The proxy is a thin shim: when we move off Supabase Edge Functions, only the proxy's upstream URL changes — clients keep working unchanged.
 
 ## Critical files
@@ -70,4 +70,4 @@ JSON-RPC `tools/list` returns the union of:
 
 Every tool runs through `requireUserOrApiKey` so RLS policies in the downstream tables are enforced as the connector user. The bridge does not bypass RLS.
 
-The canonical tool definitions live in `supabase/functions/mcp-server/rpc.ts`. The `cojo-mcp` stdio bridge at `mcp/` is deliberately dumb — it forwards JSON-RPC verbatim, so adding a tool to `rpc.ts` is automatically available to stdio-only clients without a bridge release.
+The canonical tool definitions live in `supabase/functions/mcp-server/rpc.ts`. The `scout-mcp` stdio bridge at `mcp/` is deliberately dumb — it forwards JSON-RPC verbatim, so adding a tool to `rpc.ts` is automatically available to stdio-only clients without a bridge release.

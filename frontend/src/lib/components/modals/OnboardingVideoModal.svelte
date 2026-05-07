@@ -59,7 +59,7 @@
 					frameborder="0"
 					allow="fullscreen"
 					allowfullscreen
-					title="coJournalist Introduction"
+					title="Scoutpost Introduction"
 					class:loaded={videoLoaded}
 					on:load={handleVideoLoad}
 				></iframe>
