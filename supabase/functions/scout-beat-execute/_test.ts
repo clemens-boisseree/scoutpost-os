@@ -2,7 +2,8 @@
  * Tests for scout-beat-execute Edge Function.
  *
  * Runs against the configured Supabase project in SUPABASE_URL.
- * Live-API tests are gated on FIRECRAWL_API_KEY + GEMINI_API_KEY + INTERNAL_SERVICE_KEY.
+ * Live-API tests are gated on SCOUT_LIVE_PROVIDER_TESTS=1 +
+ * FIRECRAWL_API_KEY + GEMINI_API_KEY + service auth.
  */
 
 import {
@@ -20,8 +21,11 @@ const SERVICE_KEY = Deno.env.get("INTERNAL_SERVICE_KEY") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const FIRECRAWL_KEY = Deno.env.get("FIRECRAWL_API_KEY") ?? "";
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
+const LIVE_PROVIDER_TESTS = Deno.env.get("SCOUT_LIVE_PROVIDER_TESTS") === "1";
 const hasServiceAuth = Boolean(SERVICE_ROLE_KEY || SERVICE_KEY);
-const liveKeys = Boolean(hasServiceAuth && FIRECRAWL_KEY && GEMINI_KEY);
+const liveKeys = Boolean(
+  LIVE_PROVIDER_TESTS && hasServiceAuth && FIRECRAWL_KEY && GEMINI_KEY,
+);
 
 function svcHeaders(): HeadersInit {
   if (SERVICE_ROLE_KEY) {
@@ -57,43 +61,47 @@ Deno.test("scout-beat-execute: unauthenticated returns 401", async () => {
 Deno.test(
   "scout-beat-execute: 400 when scout has no location, criteria, or topic",
   async () => {
-  if (!hasServiceAuth) {
-    console.warn("skipping: service auth not set");
-    return;
-  }
-  const user = await createTestUser();
-  const db = adminDb();
-  try {
-    const { data: scout, error } = await db
-      .from("scouts")
-      .insert({
-        user_id: user.id,
-        name: "Beat Test (missing inputs)",
-        type: "beat",
-        regularity: "weekly",
-        schedule_cron: "0 6 * * 1",
-        baseline_established_at: new Date().toISOString(),
-        priority_sources: [],
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
+    if (!hasServiceAuth) {
+      console.warn("skipping: service auth not set");
+      return;
+    }
+    const user = await createTestUser();
+    const db = adminDb();
+    try {
+      const { data: scout, error } = await db
+        .from("scouts")
+        .insert({
+          user_id: user.id,
+          name: "Beat Test (missing inputs)",
+          type: "beat",
+          regularity: "weekly",
+          schedule_cron: "0 6 * * 1",
+          baseline_established_at: new Date().toISOString(),
+          priority_sources: [],
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
 
-    const res = await fetch(functionUrl("scout-beat-execute"), {
-      method: "POST",
-      headers: svcHeaders(),
-      body: JSON.stringify({ scout_id: scout.id }),
-    });
-    assertEquals(res.status, 400);
-    const body = await res.json();
-    assertEquals(body.code, "validation_error");
-    assertEquals(body.error, "beat scout requires location, criteria, or topic");
+      const res = await fetch(functionUrl("scout-beat-execute"), {
+        method: "POST",
+        headers: svcHeaders(),
+        body: JSON.stringify({ scout_id: scout.id }),
+      });
+      assertEquals(res.status, 400);
+      const body = await res.json();
+      assertEquals(body.code, "validation_error");
+      assertEquals(
+        body.error,
+        "beat scout requires location, criteria, or topic",
+      );
 
-    await db.from("scouts").delete().eq("id", scout.id);
-  } finally {
-    await user.cleanup();
-  }
-});
+      await db.from("scouts").delete().eq("id", scout.id);
+    } finally {
+      await user.cleanup();
+    }
+  },
+);
 
 Deno.test("scout-beat-execute: 404 when scout missing", async () => {
   if (!hasServiceAuth) {

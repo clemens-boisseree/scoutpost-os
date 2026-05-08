@@ -37,6 +37,7 @@ import {
 } from "../_shared/gemini.ts";
 import type { CanonicalUnitType } from "../_shared/unit_dedup.ts";
 import {
+  NotificationSendResult,
   RemovedPostSummary,
   sendSocialAlert,
   SocialPostSummary,
@@ -51,6 +52,17 @@ import {
   formatSocialBaselinePosts,
   normalizeSocialDatasetPosts,
 } from "../_shared/social_baseline.ts";
+import {
+  classifyRunError,
+  markNotificationAttempted,
+  markNotificationResult,
+  markRunError,
+  markRunStage,
+  markRunSuccess,
+  RunErrorClass,
+  shouldIncrementScoutFailure,
+} from "../_shared/run_lifecycle.ts";
+import { incrementAndMaybeNotify } from "../_shared/scout_failures.ts";
 
 const MAX_NEW_POSTS = 20;
 const DATASET_LIMIT = 50;
@@ -175,6 +187,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // Failed-event path: record failure + return + refund the pre-charge.
   if (eventType !== "ACTOR.RUN.SUCCEEDED") {
+    const errorClass: RunErrorClass = eventType === "ACTOR.RUN.TIMED_OUT"
+      ? "timeout"
+      : "provider";
     await svc
       .from("apify_run_queue")
       .update({
@@ -185,14 +200,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .eq("id", queueRow.id);
 
     if (queueRow.scout_run_id) {
-      await svc
-        .from("scout_runs")
-        .update({
-          status: "error",
-          error_message: (eventType ?? "unknown_event").slice(0, 2000),
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", queueRow.scout_run_id);
+      await markRunError(svc, queueRow.scout_run_id, {
+        stage: "scrape",
+        errorClass,
+        message: eventType ?? "unknown_event",
+      });
+    }
+    if (shouldIncrementScoutFailure(errorClass)) {
+      await incrementAndMaybeNotify(svc, {
+        scoutId: queueRow.scout_id,
+        userId: queueRow.user_id,
+        scoutName: "Social Scout",
+        scoutType: "social",
+        language: null,
+      });
     }
 
     if (queueRow.user_id && queueRow.platform) {
@@ -219,6 +240,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // Happy path: fetch dataset, diff, extract, insert.
   try {
+    if (queueRow.scout_run_id) {
+      await markRunStage(svc, queueRow.scout_run_id, "scrape");
+    }
     const result = await processSucceededRun(svc, queueRow, datasetId);
 
     await svc
@@ -229,37 +253,85 @@ Deno.serve(async (req: Request): Promise<Response> => {
       })
       .eq("id", queueRow.id);
 
-    // Mark the linked scout_run success (linkage was set at kickoff time).
-    if (queueRow.scout_run_id) {
-      await svc
-        .from("scout_runs")
-        .update({
-          status: "success",
-          scraper_status: true,
-          articles_count: result.units_extracted,
-          merged_existing_count: result.merged_existing_count,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", queueRow.scout_run_id);
-    }
-
-    // Notify on new posts. Never throws.
-    if (
+    const shouldNotify = Boolean(
       (result.units_extracted > 0 ||
         (result.scout_row?.track_removals &&
           (result.removed_posts?.length ?? 0) > 0)) &&
-      queueRow.scout_run_id &&
-      result.scout_row
-    ) {
+        queueRow.scout_run_id &&
+        result.scout_row,
+    );
+
+    // Mark the linked scout_run success (linkage was set at kickoff time).
+    if (queueRow.scout_run_id) {
+      await markRunSuccess(svc, queueRow.scout_run_id, {
+        unitsCreated: result.units_extracted,
+        unitsMerged: result.merged_existing_count,
+        criteriaStatus: result.new_posts_count > 0 ||
+          (result.removed_posts?.length ?? 0) > 0,
+        notificationStatus: shouldNotify ? "pending" : "skipped",
+      });
+    }
+
+    // Notify on new posts. Never throws.
+    if (shouldNotify && queueRow.scout_run_id && result.scout_row) {
       try {
-        await notifySocial(
+        await markNotificationAttempted(svc, queueRow.scout_run_id).catch(
+          (e) =>
+            logEvent({
+              level: "warn",
+              fn: "apify-callback",
+              event: "notification_status_failed",
+              scout_id: queueRow.scout_id,
+              run_id: queueRow.scout_run_id,
+              msg: e instanceof Error ? e.message : String(e),
+            }),
+        );
+        const notification = await notifySocial(
           svc,
           queueRow,
           result.scout_row,
           result.new_posts ?? [],
           result.removed_posts ?? [],
         );
+        await markNotificationResult(
+          svc,
+          queueRow.scout_run_id,
+          notification.ok
+            ? "sent"
+            : notification.reason === "missing_email"
+            ? "skipped"
+            : "failed",
+          notification.ok ? { providerId: notification.providerId ?? null } : {
+            message: notification.error ?? notification.reason ??
+              "notification not sent",
+            reason: notification.reason ?? "unknown",
+          },
+        ).catch((e) =>
+          logEvent({
+            level: "warn",
+            fn: "apify-callback",
+            event: "notification_status_failed",
+            scout_id: queueRow.scout_id,
+            run_id: queueRow.scout_run_id,
+            msg: e instanceof Error ? e.message : String(e),
+          })
+        );
       } catch (e) {
+        await markNotificationResult(
+          svc,
+          queueRow.scout_run_id,
+          "failed",
+          e instanceof Error ? e.message : String(e),
+        ).catch((markErr) =>
+          logEvent({
+            level: "warn",
+            fn: "apify-callback",
+            event: "notification_status_failed",
+            scout_id: queueRow.scout_id,
+            run_id: queueRow.scout_run_id,
+            msg: markErr instanceof Error ? markErr.message : String(markErr),
+          })
+        );
         logEvent({
           level: "warn",
           fn: "apify-callback",
@@ -300,14 +372,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .eq("id", queueRow.id);
 
     if (queueRow.scout_run_id) {
-      await svc
-        .from("scout_runs")
-        .update({
-          status: "error",
-          error_message: msg.slice(0, 2000),
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", queueRow.scout_run_id);
+      const classified = classifyRunError(e, "insert_units");
+      await markRunError(svc, queueRow.scout_run_id, {
+        stage: classified.stage,
+        errorClass: classified.errorClass,
+        message: classified.message,
+      });
+      if (shouldIncrementScoutFailure(classified.errorClass)) {
+        await incrementAndMaybeNotify(svc, {
+          scoutId: queueRow.scout_id,
+          userId: queueRow.user_id,
+          scoutName: "Social Scout",
+          scoutType: "social",
+          language: null,
+        });
+      }
     }
     if (queueRow.user_id && queueRow.platform) {
       const op = SOCIAL_MONITORING_KEYS[queueRow.platform] ??
@@ -338,8 +417,10 @@ async function notifySocial(
   scout: ScoutRow,
   newPosts: ApifyPost[],
   removedPosts: ApifyPost[],
-): Promise<void> {
-  if (!queueRow.scout_run_id) return;
+): Promise<NotificationSendResult> {
+  if (!queueRow.scout_run_id) {
+    return { ok: false, reason: "missing_run_id" };
+  }
   const platform = scout.platform ?? queueRow.platform;
   const handle = scout.profile_handle ?? queueRow.handle;
   const userId = (scout.user_id ?? queueRow.user_id) as string;
@@ -372,7 +453,7 @@ async function notifySocial(
     }));
   }
 
-  await sendSocialAlert(svc, {
+  return await sendSocialAlert(svc, {
     userId,
     scoutId: queueRow.scout_id,
     runId: queueRow.scout_run_id,
@@ -471,6 +552,10 @@ async function processSucceededRun(
     });
   }
 
+  if (queueRow.scout_run_id) {
+    await markRunStage(svc, queueRow.scout_run_id, "diff");
+  }
+
   // 2. Load scout.
   const { data: scout, error: scoutErr } = await svc
     .from("scouts")
@@ -548,6 +633,9 @@ async function processSucceededRun(
   const capped = newPosts.slice(0, MAX_NEW_POSTS);
   let unitsExtracted = 0;
   let mergedExistingCount = 0;
+  if (queueRow.scout_run_id && capped.length > 0) {
+    await markRunStage(svc, queueRow.scout_run_id, "extract");
+  }
 
   for (const post of capped) {
     const text = String(post.caption ?? post.text ?? post.fullText ?? "");

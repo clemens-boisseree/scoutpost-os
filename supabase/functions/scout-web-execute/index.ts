@@ -71,6 +71,15 @@ import {
 } from "../_shared/credits.ts";
 import { sendPageScoutAlert } from "../_shared/notifications.ts";
 import { incrementAndMaybeNotify } from "../_shared/scout_failures.ts";
+import {
+  classifyRunError,
+  markNotificationAttempted,
+  markNotificationResult,
+  markRunError,
+  markRunStage,
+  markRunSuccess,
+  shouldIncrementScoutFailure,
+} from "../_shared/run_lifecycle.ts";
 
 const SUBPAGE_FETCH_CAP = 10;
 const FIRECRAWL_STAGGER_MS = 2000;
@@ -155,6 +164,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (runErr) return jsonFromError(new Error(runErr.message));
     run_id = runRow.id as string;
   }
+  const runId = run_id as string;
+  await markRunStage(svc, runId, "dispatch");
 
   let chargedCredits = false;
 
@@ -162,19 +173,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (!scout.baseline_established_at) {
       const msg =
         "page scout has no baseline; recreate or reschedule the scout so creation can establish one before Run Now";
-      await svc
-        .from("scout_runs")
-        .update({
-          status: "error",
-          error_message: msg,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", run_id);
       throw new ValidationError(msg);
     }
 
     // 3. Decrement credits before any billable work.
     try {
+      await markRunStage(svc, runId, "credits");
       await decrementOrThrow(svc, {
         userId: scout.user_id,
         cost: CREDIT_COSTS.website_extraction,
@@ -185,24 +189,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
       chargedCredits = true;
     } catch (e) {
       if (e instanceof InsufficientCreditsError) {
+        await markRunError(svc, runId, {
+          stage: "credits",
+          errorClass: "quota",
+          message: e.message,
+          status: "skipped",
+        });
         return insufficientCreditsResponse(e.required, e.current);
       }
+      const classified = classifyRunError(e, "credits");
+      await markRunError(svc, runId, {
+        stage: classified.stage,
+        errorClass: classified.errorClass,
+        message: classified.message,
+      });
       return jsonFromError(e);
     }
 
-    const result = await runPipeline(svc, scout, run_id);
+    const result = await runPipeline(svc, scout, runId);
+    const willNotify = shouldSendPageScoutAlert(result);
 
-    await svc
-      .from("scout_runs")
-      .update({
-        status: "success",
-        articles_count: result.articles_count,
-        merged_existing_count: result.merged_existing_count,
-        completed_at: new Date().toISOString(),
-        scraper_status: true,
-        criteria_status: result.criteria_ran,
-      })
-      .eq("id", run_id);
+    await markRunSuccess(svc, runId, {
+      unitsCreated: result.articles_count,
+      unitsMerged: result.merged_existing_count,
+      criteriaStatus: result.criteria_ran,
+      notificationStatus: willNotify ? "pending" : "skipped",
+    });
 
     // Reset failure counter + (if changed) stamp baseline_established_at.
     await svc.rpc("reset_scout_failures", { p_scout_id: scout.id });
@@ -218,7 +230,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       fn: "scout-web-execute",
       event: "success",
       scout_id: scout.id,
-      run_id,
+      run_id: runId,
       change: result.change_status,
       articles_count: result.articles_count,
       merged_existing_count: result.merged_existing_count,
@@ -228,13 +240,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // scouts only produce units when criteria match; Any Change scouts skip
     // criteria analysis but should still alert on changed content.
     // Never throws — a mail failure must not flip the run into error.
-    if (shouldSendPageScoutAlert(result)) {
+    if (willNotify) {
       const summary = result.summary!.trim();
       try {
-        await sendPageScoutAlert(svc, {
+        await markNotificationAttempted(svc, runId).catch((markErr) =>
+          logEvent({
+            level: "warn",
+            fn: "scout-web-execute",
+            event: "notify_status_update_failed",
+            scout_id: scout.id,
+            run_id: runId,
+            msg: markErr instanceof Error ? markErr.message : String(markErr),
+          })
+        );
+        const notification = await sendPageScoutAlert(svc, {
           userId: scout.user_id,
           scoutId: scout.id,
-          runId: run_id,
+          runId,
           scoutName: scout.name ?? "Page Scout",
           url: scout.url,
           criteria: scout.criteria ?? "",
@@ -242,13 +264,70 @@ Deno.serve(async (req: Request): Promise<Response> => {
           matchedUrl: result.matchedUrl ?? null,
           matchedTitle: result.matchedTitle ?? null,
         });
+        if (!notification.ok) {
+          await markNotificationResult(
+            svc,
+            runId,
+            notification.reason === "missing_email" ? "skipped" : "failed",
+            {
+              message: notification.error ?? notification.reason ??
+                "notification not sent",
+              reason: notification.reason ?? "unknown",
+            },
+          ).catch((markErr) =>
+            logEvent({
+              level: "warn",
+              fn: "scout-web-execute",
+              event: "notify_status_update_failed",
+              scout_id: scout.id,
+              run_id: runId,
+              msg: markErr instanceof Error ? markErr.message : String(markErr),
+            })
+          );
+          logEvent({
+            level: "warn",
+            fn: "scout-web-execute",
+            event: "notify_not_sent",
+            scout_id: scout.id,
+            run_id: runId,
+            msg: notification.reason ?? "unknown",
+          });
+        } else {
+          await markNotificationResult(svc, runId, "sent", {
+            providerId: notification.providerId ?? null,
+          }).catch((markErr) =>
+            logEvent({
+              level: "warn",
+              fn: "scout-web-execute",
+              event: "notify_status_update_failed",
+              scout_id: scout.id,
+              run_id: runId,
+              msg: markErr instanceof Error ? markErr.message : String(markErr),
+            })
+          );
+        }
       } catch (e) {
+        await markNotificationResult(
+          svc,
+          runId,
+          "failed",
+          e instanceof Error ? e.message : String(e),
+        ).catch((markErr) =>
+          logEvent({
+            level: "warn",
+            fn: "scout-web-execute",
+            event: "notify_status_update_failed",
+            scout_id: scout.id,
+            run_id: runId,
+            msg: markErr instanceof Error ? markErr.message : String(markErr),
+          })
+        );
         logEvent({
           level: "warn",
           fn: "scout-web-execute",
           event: "notify_failed",
           scout_id: scout.id,
-          run_id,
+          run_id: runId,
           msg: e instanceof Error ? e.message : String(e),
         });
       }
@@ -262,22 +341,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    const classified = classifyRunError(e, "finalize");
     try {
-      await svc
-        .from("scout_runs")
-        .update({
-          status: "error",
-          error_message: msg.slice(0, 2000),
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", run_id);
-      await incrementAndMaybeNotify(svc, {
-        scoutId: scout.id as string,
-        userId: scout.user_id as string,
-        scoutName: (scout.name as string | null) ?? "Page Scout",
-        scoutType: "web",
-        language: scout.preferred_language as string | null,
+      await markRunError(svc, runId, {
+        stage: classified.stage,
+        errorClass: classified.errorClass,
+        message: classified.message,
       });
+      if (shouldIncrementScoutFailure(classified.errorClass)) {
+        await incrementAndMaybeNotify(svc, {
+          scoutId: scout.id as string,
+          userId: scout.user_id as string,
+          scoutName: (scout.name as string | null) ?? "Page Scout",
+          scoutType: "web",
+          language: scout.preferred_language as string | null,
+        });
+      }
       if (chargedCredits) {
         // Refund the pre-run charge on failure — users shouldn't pay for
         // scheduled scrapes that never produced billable output.
@@ -295,7 +374,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         fn: "scout-web-execute",
         event: "cleanup_failed",
         scout_id: scout.id,
-        run_id,
+        run_id: runId,
         msg: cleanupErr instanceof Error
           ? cleanupErr.message
           : String(cleanupErr),
@@ -306,7 +385,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       fn: "scout-web-execute",
       event: "failed",
       scout_id: scout.id,
-      run_id,
+      run_id: runId,
+      error_class: classified.errorClass,
       msg,
     });
     return jsonFromError(e);
@@ -345,6 +425,7 @@ async function runPipeline(
   scout: ScoutRow,
   runId: string,
 ): Promise<PipelineResult> {
+  await markRunStage(svc, runId, "scrape");
   // 3. Scrape via the provider recorded for this scout:
   //      - "firecrawl_plain": plain scrape + SHA-256 hash compare to prior
   //        raw_captures row. Used when double-probe flagged the URL as
@@ -439,6 +520,7 @@ async function runPipeline(
   if (!markdown.trim()) {
     throw new ApiError("firecrawl returned empty markdown", 502);
   }
+  await markRunStage(svc, runId, "insert_units");
   // Keep the legacy local name for the rest of the pipeline below.
   const scrape = {
     markdown,
@@ -464,6 +546,7 @@ async function runPipeline(
 
   // 5. Extract units and insert non-dupes.
   // Always run extraction; criteria narrows focus when set.
+  await markRunStage(svc, runId, "extract");
   const hasCriteria = !!scout.criteria?.trim();
   let phaseBLinks = scrape.rawHtml?.trim()
     ? extractLinksFromHtml(scrape.rawHtml, scout.url)
@@ -548,6 +631,7 @@ async function runPipeline(
       hasCriteria,
     },
   );
+  await markRunStage(svc, runId, "insert_units");
   const phaseA = await insertExtractedUnits(
     svc,
     phaseAUnits,

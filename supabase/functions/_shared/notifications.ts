@@ -128,6 +128,14 @@ interface UserContext {
   healthNotificationsEnabled: boolean;
 }
 
+export interface NotificationSendResult {
+  ok: boolean;
+  reason?: string;
+  providerId?: string | null;
+  error?: string | null;
+  status?: number | null;
+}
+
 type NotificationVariant =
   | "page"
   | "beat"
@@ -214,7 +222,7 @@ const VARIANT_THEME: Record<
 export async function sendPageScoutAlert(
   svc: SupabaseClient,
   params: PageScoutAlertParams,
-): Promise<boolean> {
+): Promise<NotificationSendResult> {
   return guarded(svc, "page", params.userId, params.runId, async (ctx) => {
     const language = params.language ?? ctx.language;
     const headerTitle = getString("scout_alert", language);
@@ -270,7 +278,7 @@ export async function sendPageScoutAlert(
 export async function sendBeatAlert(
   svc: SupabaseClient,
   params: BeatAlertParams,
-): Promise<boolean> {
+): Promise<NotificationSendResult> {
   return guarded(svc, "beat", params.userId, params.runId, async (ctx) => {
     const language = params.language ?? ctx.language;
     const headerTitle = getString("beat_scout", language);
@@ -316,7 +324,7 @@ export async function sendBeatAlert(
 export async function sendCivicAlert(
   svc: SupabaseClient,
   params: CivicAlertParams,
-): Promise<boolean> {
+): Promise<NotificationSendResult> {
   return guarded(svc, "civic", params.userId, params.runId, async (ctx) => {
     const language = params.language ?? ctx.language;
     const headerTitle = getString("civic_scout", language);
@@ -344,7 +352,7 @@ export async function sendCivicAlert(
 export async function sendSocialAlert(
   svc: SupabaseClient,
   params: SocialAlertParams,
-): Promise<boolean> {
+): Promise<NotificationSendResult> {
   return guarded(svc, "social", params.userId, params.runId, async (ctx) => {
     const language = params.language ?? ctx.language;
     const headerTitle = getString("social_scout", language);
@@ -474,7 +482,7 @@ export async function sendCivicPromiseDigest(
   }: ${digestSubtitle}`;
 
   try {
-    return await sendWithRetry(resendKey, ctx.email, subject, html);
+    return (await sendWithRetry(resendKey, ctx.email, subject, html)).ok;
   } catch (e) {
     logEvent({
       level: "warn",
@@ -583,7 +591,7 @@ export async function sendScoutDeactivated(
   }: ${params.scoutName}`;
 
   try {
-    return await sendWithRetry(resendKey, ctx.email, subject, html);
+    return (await sendWithRetry(resendKey, ctx.email, subject, html)).ok;
   } catch (e) {
     logEvent({
       level: "warn",
@@ -608,8 +616,38 @@ async function guarded(
   userId: string,
   runId: string,
   render: (ctx: UserContext) => Promise<{ subject: string; html: string }>,
-): Promise<boolean> {
+): Promise<NotificationSendResult> {
   try {
+    const { data: run, error: runErr } = await svc
+      .from("scout_runs")
+      .select("notification_sent, notification_status, notification_provider_id")
+      .eq("id", runId)
+      .maybeSingle();
+    if (runErr) throw new Error(runErr.message);
+    const sentRun = run as {
+      notification_sent?: boolean | null;
+      notification_status?: string | null;
+      notification_provider_id?: string | null;
+    } | null;
+    if (
+      sentRun?.notification_sent === true ||
+      sentRun?.notification_status === "sent"
+    ) {
+      logEvent({
+        level: "info",
+        fn: "notifications",
+        event: "already_sent",
+        scout_type: scoutType,
+        user_id: userId,
+        run_id: runId,
+      });
+      return {
+        ok: true,
+        reason: "already_sent",
+        providerId: sentRun.notification_provider_id ?? null,
+      };
+    }
+
     const resendKey = Deno.env.get("RESEND_API_KEY") ?? "";
     if (!resendKey) {
       logEvent({
@@ -620,7 +658,7 @@ async function guarded(
         user_id: userId,
         run_id: runId,
       });
-      return false;
+      return { ok: false, reason: "resend_key_missing" };
     }
 
     const ctx = await resolveUserContext(svc, userId);
@@ -633,13 +671,13 @@ async function guarded(
         user_id: userId,
         run_id: runId,
       });
-      return false;
+      return { ok: false, reason: "missing_email" };
     }
 
     const { subject, html } = await render(ctx);
 
     const sent = await sendWithRetry(resendKey, ctx.email, subject, html);
-    if (!sent) return false;
+    if (!sent.ok) return sent;
 
     const { error: updateErr } = await svc
       .from("scout_runs")
@@ -666,9 +704,11 @@ async function guarded(
       scout_type: scoutType,
       user_id: userId,
       run_id: runId,
+      provider_id: sent.providerId ?? null,
     });
-    return true;
+    return sent;
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     logEvent({
       level: "warn",
       fn: "notifications",
@@ -676,9 +716,9 @@ async function guarded(
       scout_type: scoutType,
       user_id: userId,
       run_id: runId,
-      msg: e instanceof Error ? e.message : String(e),
+      msg,
     });
-    return false;
+    return { ok: false, reason: "send_failed", error: msg };
   }
 }
 
@@ -741,7 +781,7 @@ async function sendWithRetry(
   subject: string,
   html: string,
   maxRetries = 3,
-): Promise<boolean> {
+): Promise<NotificationSendResult> {
   const body = JSON.stringify({
     from: FROM,
     to: [toEmail],
@@ -764,8 +804,11 @@ async function sendWithRetry(
       });
 
       if (res.ok) {
-        await res.body?.cancel();
-        return true;
+        const payload = await safeJson(res);
+        return {
+          ok: true,
+          providerId: typeof payload?.id === "string" ? payload.id : null,
+        };
       }
 
       const detail = await safeText(res);
@@ -778,7 +821,12 @@ async function sendWithRetry(
           status: res.status,
           msg: detail.slice(0, 500),
         });
-        return false;
+        return {
+          ok: false,
+          reason: "resend_client_error",
+          status: res.status,
+          error: detail.slice(0, 500),
+        };
       }
       lastError = `HTTP ${res.status}: ${detail.slice(0, 500)}`;
     } catch (e) {
@@ -797,7 +845,24 @@ async function sendWithRetry(
     attempts: maxRetries,
     msg: lastError ?? "unknown",
   });
-  return false;
+  return {
+    ok: false,
+    reason: "resend_exhausted",
+    error: lastError ?? "unknown",
+  };
+}
+
+async function safeJson(
+  res: Response,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const value = await res.json();
+    return value && typeof value === "object"
+      ? value as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 async function safeText(res: Response): Promise<string> {

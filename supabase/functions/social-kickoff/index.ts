@@ -43,6 +43,13 @@ import {
   buildSocialActorInput,
   SOCIAL_APIFY_ACTORS,
 } from "../_shared/social_baseline.ts";
+import {
+  classifyRunError,
+  markRunError,
+  markRunStage,
+  shouldIncrementScoutFailure,
+} from "../_shared/run_lifecycle.ts";
+import { incrementAndMaybeNotify } from "../_shared/scout_failures.ts";
 
 const KickoffSchema = z.object({
   scout_id: z.string().uuid(),
@@ -119,7 +126,7 @@ async function startApifyRun(
   // 1. Load scout.
   const { data: scout, error: scoutErr } = await svc
     .from("scouts")
-    .select("id, user_id, platform, profile_handle, baseline_established_at")
+    .select("id, user_id, name, preferred_language, platform, profile_handle, baseline_established_at")
     .eq("id", scoutId)
     .maybeSingle();
   if (scoutErr) throw new Error(scoutErr.message);
@@ -153,6 +160,7 @@ async function startApifyRun(
     if (runErr) throw new Error(runErr.message);
     runId = runRow.id as string;
   }
+  await markRunStage(svc, runId, "dispatch");
 
   const { data: snapshot, error: snapshotErr } = await svc
     .from("post_snapshots")
@@ -163,14 +171,11 @@ async function startApifyRun(
   if (!snapshot) {
     const detail =
       "social scout has no baseline snapshot; recreate or reschedule the scout so creation can establish one before Run Now";
-    await svc
-      .from("scout_runs")
-      .update({
-        status: "error",
-        error_message: detail,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
+    await markRunError(svc, runId, {
+      stage: "dispatch",
+      errorClass: "no_baseline",
+      message: detail,
+    });
     throw new ValidationError(detail);
   }
 
@@ -189,10 +194,11 @@ async function startApifyRun(
 
   // 2b. Decrement credits before spending money on Apify, after baseline
   //     presence is confirmed so Run Now never bootstraps the first baseline.
+  const cost = getSocialMonitoringCost(platform);
+  const operation = SOCIAL_MONITORING_KEYS[platform] ??
+    "social_monitoring_instagram";
   try {
-    const cost = getSocialMonitoringCost(platform);
-    const operation = SOCIAL_MONITORING_KEYS[platform] ??
-      "social_monitoring_instagram";
+    await markRunStage(svc, runId, "credits");
     await decrementOrThrow(svc, {
       userId: scout.user_id,
       cost,
@@ -202,10 +208,24 @@ async function startApifyRun(
     });
   } catch (e) {
     if (e instanceof InsufficientCreditsError) {
+      await markRunError(svc, runId, {
+        stage: "credits",
+        errorClass: "quota",
+        message: e.message,
+        status: "skipped",
+      });
       return insufficientCreditsResponse(e.required, e.current);
     }
+    const classified = classifyRunError(e, "credits");
+    await markRunError(svc, runId, {
+      stage: classified.stage,
+      errorClass: classified.errorClass,
+      message: classified.message,
+    });
     throw e;
   }
+
+  await markRunStage(svc, runId, "scrape");
 
   // 3b. Insert apify_run_queue row (pending), linking to the run.
   const { data: queueRow, error: qErr } = await svc
@@ -221,7 +241,21 @@ async function startApifyRun(
     })
     .select("id")
     .single();
-  if (qErr) throw new Error(qErr.message);
+  if (qErr) {
+    await markRunError(svc, runId, {
+      stage: "dispatch",
+      errorClass: "platform",
+      message: qErr.message,
+    });
+    await refundCredits(svc, {
+      userId: scout.user_id as string,
+      cost,
+      scoutId,
+      scoutType: "social",
+      operation,
+    });
+    throw new Error(qErr.message);
+  }
   const queueId = queueRow.id as string;
 
   // 3. If APIFY_API_TOKEN isn't configured, fail/refund immediately. Leaving
@@ -233,6 +267,8 @@ async function startApifyRun(
     await markQueueFailed(svc, queueId, detail, {
       userId: scout.user_id as string,
       scoutId,
+      scoutName: scout.name as string | null,
+      language: scout.preferred_language as string | null,
       platform,
       runId,
     });
@@ -250,32 +286,34 @@ async function startApifyRun(
   //    supplied as a base64-encoded JSON query parameter — a top-level
   //    `webhooks` field in the JSON body is silently dropped (verified live
   //    2026-04-21: webhook-dispatches=0 for every body-passed registration).
-  const supabaseUrl = getSupabaseUrl();
-  const webhookUrl = `${supabaseUrl}/functions/v1/apify-callback`;
   const input = buildActorInput(platform, handle);
-  const webhookSpec = [
-    {
-      eventTypes: [
-        "ACTOR.RUN.SUCCEEDED",
-        "ACTOR.RUN.FAILED",
-        "ACTOR.RUN.TIMED_OUT",
-        "ACTOR.RUN.ABORTED",
-      ],
-      requestUrl: webhookUrl,
-      headersTemplate: JSON.stringify({
-        ...serviceHeaders,
-        "Content-Type": "application/json",
-        "X-Apify-Webhook-Signature": "{{signature}}",
-      }),
-    },
-  ];
-  // Apify requires the webhooks JSON array to be base64-encoded and sent as a
-  // query parameter. Standard base64 includes `+` `/` and `=` so URL-encode
-  // before appending — without this, the query string parses as garbled
-  // characters and Apify silently drops the webhook (verified live 2026-04-21).
-  const webhooksB64 = encodeURIComponent(btoa(JSON.stringify(webhookSpec)));
-  const runsUrl =
-    `https://api.apify.com/v2/acts/${actorId}/runs?webhooks=${webhooksB64}`;
+  let runsUrl = `https://api.apify.com/v2/acts/${actorId}/runs`;
+  if (Deno.env.get("APIFY_DISABLE_WEBHOOK") !== "1") {
+    const supabaseUrl = getSupabaseUrl();
+    const webhookUrl = `${supabaseUrl}/functions/v1/apify-callback`;
+    const webhookSpec = [
+      {
+        eventTypes: [
+          "ACTOR.RUN.SUCCEEDED",
+          "ACTOR.RUN.FAILED",
+          "ACTOR.RUN.TIMED_OUT",
+          "ACTOR.RUN.ABORTED",
+        ],
+        requestUrl: webhookUrl,
+        headersTemplate: JSON.stringify({
+          ...serviceHeaders,
+          "Content-Type": "application/json",
+          "X-Apify-Webhook-Signature": "{{signature}}",
+        }),
+      },
+    ];
+    // Apify requires the webhooks JSON array to be base64-encoded and sent as a
+    // query parameter. Standard base64 includes `+` `/` and `=` so URL-encode
+    // before appending — without this, the query string parses as garbled
+    // characters and Apify silently drops the webhook (verified live 2026-04-21).
+    const webhooksB64 = encodeURIComponent(btoa(JSON.stringify(webhookSpec)));
+    runsUrl = `${runsUrl}?webhooks=${webhooksB64}`;
+  }
 
   let apifyRes: Response;
   try {
@@ -295,6 +333,8 @@ async function startApifyRun(
     await markQueueFailed(svc, queueId, `network error: ${msg}`, {
       userId: scout.user_id as string,
       scoutId,
+      scoutName: scout.name as string | null,
+      language: scout.preferred_language as string | null,
       platform,
       runId,
     });
@@ -315,6 +355,8 @@ async function startApifyRun(
     await markQueueFailed(svc, queueId, detail, {
       userId: scout.user_id as string,
       scoutId,
+      scoutName: scout.name as string | null,
+      language: scout.preferred_language as string | null,
       platform,
       runId,
     });
@@ -339,6 +381,8 @@ async function startApifyRun(
     await markQueueFailed(svc, queueId, "apify response missing data.id", {
       userId: scout.user_id as string,
       scoutId,
+      scoutName: scout.name as string | null,
+      language: scout.preferred_language as string | null,
       platform,
       runId,
     });
@@ -354,7 +398,17 @@ async function startApifyRun(
       started_at: new Date().toISOString(),
     })
     .eq("id", queueId);
-  if (updErr) throw new Error(updErr.message);
+  if (updErr) {
+    await markQueueFailed(svc, queueId, updErr.message, {
+      userId: scout.user_id as string,
+      scoutId,
+      scoutName: scout.name as string | null,
+      language: scout.preferred_language as string | null,
+      platform,
+      runId,
+    });
+    throw new Error(updErr.message);
+  }
 
   logEvent({
     level: "info",
@@ -393,6 +447,8 @@ async function markQueueFailed(
   refund?: {
     userId: string;
     scoutId: string;
+    scoutName?: string | null;
+    language?: string | null;
     platform: string;
     runId?: string;
   },
@@ -418,14 +474,21 @@ async function markQueueFailed(
 
   if (refund?.runId) {
     try {
-      await svc
-        .from("scout_runs")
-        .update({
-          status: "error",
-          error_message: detail.slice(0, ERROR_MAX),
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", refund.runId);
+      const classified = classifyRunError(new Error(detail), "scrape");
+      await markRunError(svc, refund.runId, {
+        stage: classified.stage,
+        errorClass: classified.errorClass,
+        message: classified.message,
+      });
+      if (shouldIncrementScoutFailure(classified.errorClass)) {
+        await incrementAndMaybeNotify(svc, {
+          scoutId: refund.scoutId,
+          userId: refund.userId,
+          scoutName: refund.scoutName ?? "Social Scout",
+          scoutType: "social",
+          language: refund.language ?? null,
+        });
+      }
     } catch (e) {
       logEvent({
         level: "error",

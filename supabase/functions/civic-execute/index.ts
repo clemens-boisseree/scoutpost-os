@@ -39,6 +39,13 @@ import {
 } from "../_shared/civic_links.ts";
 import { incrementAndMaybeNotify } from "../_shared/scout_failures.ts";
 import {
+  classifyRunError,
+  markRunError,
+  markRunStage,
+  markRunSuccess,
+  shouldIncrementScoutFailure,
+} from "../_shared/run_lifecycle.ts";
+import {
   CREDIT_COSTS,
   decrementOrThrow,
   InsufficientCreditsError,
@@ -140,18 +147,16 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
   // 2. Resolve / create scout_runs row before any charge so a missing baseline
   //    can be recorded as an error without spending user credits.
   const runId = await resolveRun(db, scout, runIdIn);
+  await markRunStage(db, runId, "dispatch");
 
   if (!scout.baseline_established_at) {
     const msg =
       "civic scout has no baseline; recreate or reschedule the scout so creation can establish one before Run Now";
-    await db
-      .from("scout_runs")
-      .update({
-        status: "error",
-        error_message: msg,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
+    await markRunError(db, runId, {
+      stage: "dispatch",
+      errorClass: "no_baseline",
+      message: msg,
+    });
     throw new ValidationError(msg);
   }
 
@@ -160,6 +165,7 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
   //    (≤20 tracked_urls Firecrawl scrapes + ≤2 PDF parses + ≤2 Gemini
   //    extractions per run). Refunded on error paths via refundCredits.
   try {
+    await markRunStage(db, runId, "credits");
     await decrementOrThrow(db, {
       userId: scout.user_id,
       cost: CREDIT_COSTS.civic,
@@ -169,12 +175,26 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
     });
   } catch (e) {
     if (e instanceof InsufficientCreditsError) {
+      await markRunError(db, runId, {
+        stage: "credits",
+        errorClass: "quota",
+        message: e.message,
+        status: "skipped",
+      });
       return insufficientCreditsResponse(e.required, e.current);
     }
+    const classified = classifyRunError(e, "credits");
+    await markRunError(db, runId, {
+      stage: classified.stage,
+      errorClass: classified.errorClass,
+      message: classified.message,
+    });
     throw e;
   }
 
   try {
+    await markRunStage(db, runId, "scrape");
+
     // URLs already considered "seen" for this scout: (a) already successfully
     // extracted (worker has appended them to scouts.processed_pdf_urls after
     // a successful Firecrawl + insert), OR (b) currently in the queue
@@ -193,6 +213,8 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
     const skipSet = new Set<string>([...scoutSeen, ...queueSeen]);
 
     let queuedCount = 0;
+    let scrapeFailureCount = 0;
+    let queueFailureCount = 0;
 
     for (const url of tracked) {
       if (queuedCount >= MAX_DOCS_PER_RUN) break;
@@ -211,6 +233,7 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
       try {
         result = await firecrawlChangeTrackingScrape(url, tag);
       } catch (e) {
+        scrapeFailureCount += 1;
         logEvent({
           level: "warn",
           fn: "civic-execute",
@@ -244,6 +267,8 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
           skipSet.add(directDocumentUrl);
           queueSeen.add(directDocumentUrl);
           queuedCount += 1;
+        } else {
+          queueFailureCount += 1;
         }
         continue;
       }
@@ -272,6 +297,7 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
             docKind,
           }))
         ) {
+          queueFailureCount += 1;
           continue;
         }
 
@@ -281,6 +307,14 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
         skipSet.add(docUrl);
         queuedCount += 1;
       }
+    }
+
+    if (
+      queuedCount === 0 && (scrapeFailureCount > 0 || queueFailureCount > 0)
+    ) {
+      throw new Error(
+        `civic pipeline failed before queueing documents; firecrawl scrape failed=${scrapeFailureCount}; queue insert failed=${queueFailureCount}`,
+      );
     }
 
     // Refund the pre-charge when no billable work was queued. Legacy civic
@@ -330,16 +364,12 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
       });
     }
 
-    // 4. Mark run success.
-    await db
-      .from("scout_runs")
-      .update({
-        status: "success",
-        scraper_status: true,
-        articles_count: queuedCount,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
+    await markRunSuccess(db, runId, {
+      unitsCreated: queuedCount,
+      unitsMerged: 0,
+      criteriaStatus: queuedCount > 0,
+      notificationStatus: queuedCount > 0 ? "pending" : "not_applicable",
+    });
 
     logEvent({
       level: "info",
@@ -358,23 +388,22 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
       tracked_urls_checked: tracked.length,
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    await db
-      .from("scout_runs")
-      .update({
-        status: "error",
-        error_message: msg.slice(0, 2000),
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
-
-    await incrementAndMaybeNotify(db, {
-      scoutId,
-      userId: scout.user_id as string,
-      scoutName: (scout.name as string | null) ?? "Civic Scout",
-      scoutType: "civic",
-      language: scout.preferred_language as string | null,
+    const classified = classifyRunError(e, "scrape");
+    await markRunError(db, runId, {
+      stage: classified.stage,
+      errorClass: classified.errorClass,
+      message: classified.message,
     });
+
+    if (shouldIncrementScoutFailure(classified.errorClass)) {
+      await incrementAndMaybeNotify(db, {
+        scoutId,
+        userId: scout.user_id as string,
+        scoutName: (scout.name as string | null) ?? "Civic Scout",
+        scoutType: "civic",
+        language: scout.preferred_language as string | null,
+      });
+    }
     // Refund the pre-charge on error — the run never got to enqueue work.
     await refundCredits(db, {
       userId: scout.user_id as string,

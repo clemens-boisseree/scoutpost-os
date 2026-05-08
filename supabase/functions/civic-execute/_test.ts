@@ -2,7 +2,8 @@
  * Tests for civic-execute Edge Function.
  *
  * Requires local supabase stack running. The happy-path test calls live
- * Firecrawl and is gated on FIRECRAWL_API_KEY + INTERNAL_SERVICE_KEY.
+ * Firecrawl and is gated on SCOUT_LIVE_PROVIDER_TESTS=1 +
+ * FIRECRAWL_API_KEY + service auth.
  */
 
 import {
@@ -10,13 +11,20 @@ import {
   assertExists,
 } from "https://deno.land/std@0.208.0/assert/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { createTestUser, functionUrl, SUPABASE_URL } from "../_shared/_testing.ts";
+import {
+  createTestUser,
+  functionUrl,
+  SUPABASE_URL,
+} from "../_shared/_testing.ts";
 
 const SERVICE_KEY = Deno.env.get("INTERNAL_SERVICE_KEY") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const FIRECRAWL_KEY = Deno.env.get("FIRECRAWL_API_KEY") ?? "";
+const LIVE_PROVIDER_TESTS = Deno.env.get("SCOUT_LIVE_PROVIDER_TESTS") === "1";
 const hasServiceAuth = Boolean(SERVICE_ROLE_KEY || SERVICE_KEY);
-const liveKeys = Boolean(hasServiceAuth && FIRECRAWL_KEY);
+const liveKeys = Boolean(
+  LIVE_PROVIDER_TESTS && hasServiceAuth && FIRECRAWL_KEY,
+);
 
 function svcHeaders(): HeadersInit {
   if (SERVICE_ROLE_KEY) {
@@ -120,6 +128,7 @@ Deno.test({
           schedule_cron: "0 6 * * 1",
           tracked_urls: ["https://example.com"],
           processed_pdf_urls: [],
+          baseline_established_at: new Date().toISOString(),
         })
         .select("id")
         .single();

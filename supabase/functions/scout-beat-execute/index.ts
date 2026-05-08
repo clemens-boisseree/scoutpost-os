@@ -44,10 +44,10 @@ import {
   upsertCanonicalUnit,
 } from "../_shared/unit_dedup.ts";
 import {
+  beatCandidateRejectReason,
   BeatHit,
   BeatScope,
   BeatSourceMode,
-  beatCandidateRejectReason,
   discoverBeatHits,
   generateBeatSummary,
 } from "../_shared/beat_pipeline.ts";
@@ -72,6 +72,15 @@ import {
 } from "../_shared/fact_check.ts";
 import { parseBeatLocation } from "../_shared/beat_location.ts";
 import { repairMissingBeatBaseline } from "../_shared/baseline_repair.ts";
+import {
+  classifyRunError,
+  markNotificationAttempted,
+  markNotificationResult,
+  markRunError,
+  markRunStage,
+  markRunSuccess,
+  shouldIncrementScoutFailure,
+} from "../_shared/run_lifecycle.ts";
 
 const InputSchema = z.object({
   scout_id: z.string().uuid(),
@@ -195,7 +204,10 @@ function compactSearchPart(value: string, limit: number): string {
   return value.replace(/\s+/g, " ").trim().slice(0, limit);
 }
 
-function urlMatchesDomain(rawUrl: string | null | undefined, domain: string): boolean {
+function urlMatchesDomain(
+  rawUrl: string | null | undefined,
+  domain: string,
+): boolean {
   const host = safeDomain(rawUrl)?.replace(/^www\./i, "").toLowerCase();
   return Boolean(host && (host === domain || host.endsWith(`.${domain}`)));
 }
@@ -273,6 +285,7 @@ async function execute(
   // 2. Resolve / create scout_runs row before any charge so missing baselines
   //    fail visibly without spending credits.
   const runId = await resolveRun(db, scout, runIdIn);
+  await markRunStage(db, runId, "dispatch");
   let chargedCredits = false;
 
   if (!baselineOnly && !scout.baseline_established_at) {
@@ -298,14 +311,11 @@ async function execute(
       event: "missing_baseline_no_repair_source",
       scout_id: scoutId,
     });
-    await db
-      .from("scout_runs")
-      .update({
-        status: "error",
-        error_message: msg,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
+    await markRunError(db, runId, {
+      stage: "dispatch",
+      errorClass: "no_baseline",
+      message: msg,
+    });
     throw new ValidationError(msg);
   }
 
@@ -313,6 +323,7 @@ async function execute(
   //    creation runs are setup work, not user-triggered monitoring runs.
   if (!baselineOnly) {
     try {
+      await markRunStage(db, runId, "credits");
       await decrementOrThrow(db, {
         userId: scout.user_id,
         cost: CREDIT_COSTS.beat,
@@ -323,13 +334,26 @@ async function execute(
       chargedCredits = true;
     } catch (e) {
       if (e instanceof InsufficientCreditsError) {
+        await markRunError(db, runId, {
+          stage: "credits",
+          errorClass: "quota",
+          message: e.message,
+          status: "skipped",
+        });
         return insufficientCreditsResponse(e.required, e.current);
       }
+      const classified = classifyRunError(e, "credits");
+      await markRunError(db, runId, {
+        stage: classified.stage,
+        errorClass: classified.errorClass,
+        message: classified.message,
+      });
       throw e;
     }
   }
 
   try {
+    await markRunStage(db, runId, "scrape");
     // --- Stage 0: prepare pipeline inputs ---
     const locationObj = parseBeatLocation(scout.location);
     const cityName = locationObj.city ?? null;
@@ -443,17 +467,12 @@ async function execute(
           .eq("id", scoutId);
         if (baselineErr) throw new Error(baselineErr.message);
       }
-      await db
-        .from("scout_runs")
-        .update({
-          status: "success",
-          scraper_status: true,
-          criteria_status: false,
-          articles_count: 0,
-          merged_existing_count: 0,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", runId);
+      await markRunSuccess(db, runId, {
+        unitsCreated: 0,
+        unitsMerged: 0,
+        criteriaStatus: false,
+        notificationStatus: baselineOnly ? "not_applicable" : "skipped",
+      });
       if (chargedCredits) {
         await refundCredits(db, {
           userId: scout.user_id as string,
@@ -521,6 +540,7 @@ async function execute(
     // 5. Persist raw_captures for each successful scrape.
     const rawCaptureIds: string[] = [];
     const rawCaptureHashes: string[] = [];
+    await markRunStage(db, runId, "insert_units");
     for (const s of succeeded) {
       const md = s.markdown ?? "";
       const hash = await sha256Hex(md);
@@ -556,6 +576,9 @@ async function execute(
     let insertedCount = 0;
     let mergedExistingCount = 0;
     let abstainedCount = 0;
+    let extractionFailureCount = 0;
+    let embedFailureCount = 0;
+    let unitInsertFailureCount = 0;
     const insertedStatements: string[] = [];
     const newsStatements: string[] = [];
     const govStatements: string[] = [];
@@ -567,6 +590,7 @@ async function execute(
     >();
     const factCheckConfig = loadFactCheckConfig();
 
+    await markRunStage(db, runId, "extract");
     for (let i = 0; i < succeeded.length; i++) {
       const src = succeeded[i];
       const captureId = rawCaptureIds[i];
@@ -593,6 +617,7 @@ async function execute(
           contentLimit: extractionConfig.contentLimit,
         });
       } catch (e) {
+        extractionFailureCount += 1;
         logEvent({
           level: "warn",
           fn: "scout-beat-execute",
@@ -611,6 +636,7 @@ async function execute(
             title: src.title ?? null,
           });
         } catch (e) {
+          embedFailureCount += 1;
           logEvent({
             level: "warn",
             fn: "scout-beat-execute",
@@ -657,6 +683,7 @@ async function execute(
         }
 
         try {
+          await markRunStage(db, runId, "insert_units");
           const result = await upsertCanonicalUnit(db, {
             userId: scout.user_id as string,
             statement: u.statement,
@@ -711,6 +738,7 @@ async function execute(
             mergedExistingCount += 1;
           }
         } catch (e) {
+          unitInsertFailureCount += 1;
           logEvent({
             level: "warn",
             fn: "scout-beat-execute",
@@ -727,6 +755,24 @@ async function execute(
     const noSurfaceReason = insertedCount === 0 && mergedExistingCount === 0
       ? "No usable information units were extracted from successfully scraped sources."
       : null;
+    if (
+      noSurfaceReason &&
+      (extractionFailureCount > 0 || embedFailureCount > 0 ||
+        unitInsertFailureCount > 0)
+    ) {
+      throw new Error(
+        [
+          "unit pipeline failed before surfacing units",
+          extractionFailureCount > 0
+            ? `extract failed=${extractionFailureCount}`
+            : "",
+          embedFailureCount > 0 ? `embed failed=${embedFailureCount}` : "",
+          unitInsertFailureCount > 0
+            ? `unit insert failed=${unitInsertFailureCount}`
+            : "",
+        ].filter(Boolean).join("; "),
+      );
+    }
     if (noSurfaceReason && chargedCredits) {
       await refundCredits(db, {
         userId: scout.user_id as string,
@@ -757,18 +803,19 @@ async function execute(
     }
 
     // 9. Mark run success + reset failures.
-    await db
-      .from("scout_runs")
-      .update({
-        status: "success",
-        scraper_status: true,
-        criteria_status: baselineOnly ? false : !noSurfaceReason,
-        articles_count: baselineOnly ? 0 : insertedCount,
-        merged_existing_count: baselineOnly ? 0 : mergedExistingCount,
-        error_message: baselineOnly ? null : noSurfaceReason,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
+    const willNotify = !baselineOnly && insertedCount > 0 &&
+      insertedStatements.length > 0;
+    await markRunSuccess(db, runId, {
+      unitsCreated: baselineOnly ? 0 : insertedCount,
+      unitsMerged: baselineOnly ? 0 : mergedExistingCount,
+      criteriaStatus: baselineOnly ? false : !noSurfaceReason,
+      notificationStatus: baselineOnly
+        ? "not_applicable"
+        : willNotify
+        ? "pending"
+        : "skipped",
+      errorMessage: baselineOnly ? null : noSurfaceReason,
+    });
 
     const { error: resetErr } = await db.rpc("reset_scout_failures", {
       p_scout_id: scoutId,
@@ -799,7 +846,7 @@ async function execute(
     // Notify user when new, non-duplicate units landed. Build separate article
     // cards for news vs government (legacy behaviour), with LLM-composed
     // summaries per section rather than raw statement bullets.
-    if (!baselineOnly && insertedCount > 0 && insertedStatements.length > 0) {
+    if (willNotify) {
       try {
         const newsArticles: Article[] = [...surfacedArticles.values()]
           .filter((article) => article.category === "news")
@@ -836,7 +883,17 @@ async function execute(
           : govStatements.slice(0, 5).map((s) => `- ${s}`).join("\n");
 
         const locationLabel = extractLocationLabel(scout.location);
-        await sendBeatAlert(db, {
+        await markNotificationAttempted(db, runId).catch((markErr) =>
+          logEvent({
+            level: "warn",
+            fn: "scout-beat-execute",
+            event: "notify_status_update_failed",
+            scout_id: scoutId,
+            run_id: runId,
+            msg: markErr instanceof Error ? markErr.message : String(markErr),
+          })
+        );
+        const notification = await sendBeatAlert(db, {
           userId: scout.user_id as string,
           scoutId: scout.id as string,
           runId,
@@ -849,7 +906,45 @@ async function execute(
           govArticles: govArticles.length > 0 ? govArticles : undefined,
           govSummary: govSummary || undefined,
         });
+        await markNotificationResult(
+          db,
+          runId,
+          notification.ok
+            ? "sent"
+            : notification.reason === "missing_email"
+            ? "skipped"
+            : "failed",
+          notification.ok ? { providerId: notification.providerId ?? null } : {
+            message: notification.error ?? notification.reason ??
+              "notification not sent",
+            reason: notification.reason ?? "unknown",
+          },
+        ).catch((markErr) =>
+          logEvent({
+            level: "warn",
+            fn: "scout-beat-execute",
+            event: "notify_status_update_failed",
+            scout_id: scoutId,
+            run_id: runId,
+            msg: markErr instanceof Error ? markErr.message : String(markErr),
+          })
+        );
       } catch (e) {
+        await markNotificationResult(
+          db,
+          runId,
+          "failed",
+          e instanceof Error ? e.message : String(e),
+        ).catch((markErr) =>
+          logEvent({
+            level: "warn",
+            fn: "scout-beat-execute",
+            event: "notify_status_update_failed",
+            scout_id: scoutId,
+            run_id: runId,
+            msg: markErr instanceof Error ? markErr.message : String(markErr),
+          })
+        );
         logEvent({
           level: "warn",
           fn: "scout-beat-execute",
@@ -873,16 +968,14 @@ async function execute(
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    await db
-      .from("scout_runs")
-      .update({
-        status: "error",
-        error_message: msg.slice(0, 2000),
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
+    const classified = classifyRunError(e, "finalize");
+    await markRunError(db, runId, {
+      stage: classified.stage,
+      errorClass: classified.errorClass,
+      message: classified.message,
+    });
 
-    if (!baselineOnly) {
+    if (!baselineOnly && shouldIncrementScoutFailure(classified.errorClass)) {
       await incrementAndMaybeNotify(db, {
         scoutId,
         userId: scout.user_id as string,

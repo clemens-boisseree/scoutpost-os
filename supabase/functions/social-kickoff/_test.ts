@@ -2,7 +2,8 @@
  * Tests for social-kickoff.
  *
  * Runs against local supabase (127.0.0.1:54321). The live happy-path test
- * is gated on APIFY_API_TOKEN since it makes a real Apify run.
+ * is gated on SCOUT_LIVE_PROVIDER_TESTS=1 + APIFY_API_TOKEN since it makes a
+ * real Apify run.
  */
 
 import {
@@ -34,6 +35,8 @@ function serviceHeaders(): HeadersInit {
     "Content-Type": "application/json",
   };
 }
+
+const liveProviderTests = Deno.env.get("SCOUT_LIVE_PROVIDER_TESTS") === "1";
 
 async function insertScout(
   userId: string,
@@ -81,7 +84,8 @@ Deno.test(
       const body = await res.json();
       assertEquals(res.status, 400);
       assert(
-        typeof body.error === "string" && body.error.toLowerCase().includes("platform"),
+        typeof body.error === "string" &&
+          body.error.toLowerCase().includes("platform"),
         `unexpected error: ${JSON.stringify(body)}`,
       );
     } finally {
@@ -95,7 +99,7 @@ Deno.test(
   {
     name:
       "social-kickoff: happy path starts apify run (live APIFY_API_TOKEN required)",
-    ignore: !Deno.env.get("APIFY_API_TOKEN"),
+    ignore: !liveProviderTests || !Deno.env.get("APIFY_API_TOKEN"),
   },
   async () => {
     const user = await createTestUser();
@@ -104,17 +108,31 @@ Deno.test(
       scoutId = await insertScout(user.id, {
         platform: "x",
         profile_handle: "apify",
+        baseline_established_at: new Date().toISOString(),
       });
+      const { error: snapshotErr } = await svc()
+        .from("post_snapshots")
+        .insert({
+          user_id: user.id,
+          scout_id: scoutId,
+          platform: "x",
+          handle: "apify",
+          post_count: 0,
+          posts: [],
+        });
+      if (snapshotErr) throw new Error(snapshotErr.message);
       const res = await fetch(functionUrl("social-kickoff"), {
         method: "POST",
         headers: serviceHeaders(),
         body: JSON.stringify({ scout_id: scoutId }),
       });
-      assertEquals(res.status, 202);
       const body = await res.json();
+      assertEquals(res.status, 202, JSON.stringify(body));
       assertEquals(body.status, "started");
       assert(typeof body.queue_id === "string" && body.queue_id.length > 0);
-      assert(typeof body.apify_run_id === "string" && body.apify_run_id.length > 0);
+      assert(
+        typeof body.apify_run_id === "string" && body.apify_run_id.length > 0,
+      );
     } finally {
       if (scoutId) {
         // Queue rows cascade via scout_id FK.

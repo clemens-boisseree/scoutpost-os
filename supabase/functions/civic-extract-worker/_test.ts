@@ -2,8 +2,8 @@
  * Tests for civic-extract-worker.
  *
  * Runs against the configured Supabase project in SUPABASE_URL.
- * The happy-path test is gated on live keys (FIRECRAWL + GEMINI); without
- * them only the auth and idle-queue paths are exercised.
+ * The happy-path test is gated on SCOUT_LIVE_PROVIDER_TESTS=1 plus live keys
+ * (FIRECRAWL + GEMINI); without them only auth and idle-queue paths run.
  */
 
 import {
@@ -82,7 +82,9 @@ Deno.test(
   },
 );
 
-const hasLiveKeys = !!Deno.env.get("GEMINI_API_KEY") &&
+const liveProviderTests = Deno.env.get("SCOUT_LIVE_PROVIDER_TESTS") === "1";
+const hasLiveKeys = liveProviderTests &&
+  !!Deno.env.get("GEMINI_API_KEY") &&
   !!Deno.env.get("FIRECRAWL_API_KEY");
 
 Deno.test(
