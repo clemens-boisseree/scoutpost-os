@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: cojournalist
+    name: scoutpost
     runtime: docker
     plan: starter
     region: frankfurt
