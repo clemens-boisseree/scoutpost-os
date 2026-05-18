@@ -6,11 +6,11 @@
     "description": "Scoutpost Edge Functions — the public HTTP surface used by the web UI, the `scout` CLI, the `scout-mcp` stdio bridge, and third-party agents. All endpoints live under `${SUPABASE_URL}/functions/v1/`. Authentication: `Authorization: Bearer <token>` where the token is either a Supabase user JWT (browser sessions) or a `cj_…` API key (agents, CI). When the host is a Supabase project, Kong additionally requires the `apikey: <anon_key>` header.",
     "contact": {
       "name": "Scoutpost",
-      "url": "https://www.scoutpost.ai"
+      "url": "https://scoutpost.ai"
     }
   },
   "servers": [
-    { "url": "https://www.scoutpost.ai/functions/v1", "description": "Production" },
+    { "url": "https://scoutpost.ai/functions/v1", "description": "Production" },
     { "url": "/functions/v1", "description": "Relative (when proxied by the app)" }
   ],
   "security": [{ "bearerAuth": [], "anonKey": [] }],

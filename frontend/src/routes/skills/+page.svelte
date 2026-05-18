@@ -81,7 +81,7 @@
 				<h2>MCP endpoint</h2>
 			</div>
 			<p>
-				Hosted agents can connect to <code>https://www.scoutpost.ai/mcp</code>. The skill
+				Hosted agents can connect to <code>https://scoutpost.ai/mcp</code>. The skill
 				files explain the available tools and the expected scout, unit, and verification workflow.
 			</p>
 		</SharpPanel>

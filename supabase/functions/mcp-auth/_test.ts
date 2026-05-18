@@ -22,7 +22,7 @@ Deno.env.set(
   "MCP_STATE_SECRET",
   "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
 );
-Deno.env.set("PUBLIC_APP_URL", "https://www.scoutpost.ai");
+Deno.env.set("PUBLIC_APP_URL", "https://scoutpost.ai");
 Deno.env.set("MUCKROCK_CALLBACK_URL", "https://scoutpost.ai/api/auth/callback");
 Deno.env.set("MUCKROCK_CLIENT_ID", "test-client");
 Deno.env.set("MUCKROCK_CLIENT_SECRET", "test-secret");

@@ -35,9 +35,9 @@ before the user clicks anything. The decision logic, in priority order:
 Quick verification:
 
 ```bash
-$ curl -I https://www.scoutpost.ai/mcp
+$ curl -I https://scoutpost.ai/mcp
 HTTP/2 401
-www-authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://www.scoutpost.ai/mcp/.well-known/oauth-protected-resource"
+www-authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://scoutpost.ai/mcp/.well-known/oauth-protected-resource"
 mcp-protocol-version: 2025-06-18
 allow: POST, HEAD, OPTIONS
 ```

@@ -11,7 +11,7 @@ Deno.test("parseAllowedPostLoginRedirect accepts localhost auth callback", () =>
 });
 
 Deno.test("parseAllowedPostLoginRedirect rejects non-local hosts", () => {
-  const redirect = parseAllowedPostLoginRedirect("https://www.scoutpost.ai/auth/callback");
+  const redirect = parseAllowedPostLoginRedirect("https://scoutpost.ai/auth/callback");
   if (redirect !== undefined) {
     throw new Error(`expected redirect to be rejected, got ${redirect}`);
   }
@@ -20,7 +20,7 @@ Deno.test("parseAllowedPostLoginRedirect rejects non-local hosts", () => {
 Deno.test("buildLocalPostLoginHandoffUrl rewrites the Supabase redirect onto localhost", () => {
   const handoff = buildLocalPostLoginHandoffUrl(
     "http://localhost:5173/auth/callback",
-    "https://www.scoutpost.ai/auth/callback#access_token=abc&refresh_token=def",
+    "https://scoutpost.ai/auth/callback#access_token=abc&refresh_token=def",
   );
   if (handoff !== "http://localhost:5173/auth/callback#access_token=abc&refresh_token=def") {
     throw new Error(`unexpected handoff ${handoff ?? "undefined"}`);
@@ -30,7 +30,7 @@ Deno.test("buildLocalPostLoginHandoffUrl rewrites the Supabase redirect onto loc
 Deno.test("buildLocalPostLoginHandoffUrl rejects action redirects without tokens", () => {
   const handoff = buildLocalPostLoginHandoffUrl(
     "http://localhost:5173/auth/callback",
-    "https://www.scoutpost.ai/auth/callback",
+    "https://scoutpost.ai/auth/callback",
   );
   if (handoff !== undefined) {
     throw new Error(`expected missing-hash redirect to be rejected, got ${handoff}`);

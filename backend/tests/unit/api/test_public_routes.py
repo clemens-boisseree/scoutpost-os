@@ -73,3 +73,35 @@ def test_swagger_route_serves_prerendered_html_and_allows_unpkg(monkeypatch, tmp
     assert res.status_code == 200
     assert "swagger" in res.text
     assert "https://unpkg.com" in res.headers["content-security-policy"]
+
+
+def test_legacy_cojournalist_host_redirects_to_scoutpost():
+    res = TestClient(app, follow_redirects=False).get(
+        "/auth/callback?code=abc&state=xyz",
+        headers={"host": "cojournalist.ai"},
+    )
+
+    assert res.status_code == 308
+    assert res.headers["location"] == (
+        "https://scoutpost.ai/auth/callback?code=abc&state=xyz"
+    )
+
+
+def test_legacy_www_cojournalist_host_redirects_to_scoutpost():
+    res = TestClient(app, follow_redirects=False).get(
+        "/login",
+        headers={"host": "www.cojournalist.ai"},
+    )
+
+    assert res.status_code == 308
+    assert res.headers["location"] == "https://scoutpost.ai/login"
+
+
+def test_www_scoutpost_host_redirects_to_apex_scoutpost():
+    res = TestClient(app, follow_redirects=False).get(
+        "/docs?x=1",
+        headers={"host": "www.scoutpost.ai"},
+    )
+
+    assert res.status_code == 308
+    assert res.headers["location"] == "https://scoutpost.ai/docs?x=1"

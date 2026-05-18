@@ -27,7 +27,7 @@ services:
       - key: SUPABASE_JWT_SECRET
         sync: false
       - key: APP_POST_LOGIN_REDIRECT
-        value: https://www.scoutpost.ai/auth/callback
+        value: https://scoutpost.ai/auth/callback
       # Webhook paused until PR 2a ships post-cutover
       - key: MUCKROCK_WEBHOOK_PAUSED
         value: "true"

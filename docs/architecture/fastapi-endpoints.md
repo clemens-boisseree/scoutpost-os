@@ -1,7 +1,7 @@
 # FastAPI Endpoints Specification
 
 > Last Updated: 2026-04-22 (post-cutover — see [api-surface-audit.md](api-surface-audit.md))
-> Production URL: `https://www.scoutpost.ai` (FastAPI on Render, SPA served from same domain)
+> Production URL: `https://scoutpost.ai` (FastAPI on Render, SPA served from same domain)
 
 ## Overview
 

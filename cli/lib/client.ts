@@ -96,15 +96,15 @@ export function loadConfig(): ResolvedConfig {
   if (!cfg.api_url) {
     throw new Error(
       "api_url not set.\n" +
-        "  Hosted Scoutpost: scout config set api_url=https://www.scoutpost.ai/functions/v1\n" +
+        "  Hosted Scoutpost: scout config set api_url=https://scoutpost.ai/functions/v1\n" +
         "  Self-hosted Supabase: scout config set api_url=https://<project>.supabase.co",
     );
   }
   if (!cfg.api_key && !cfg.auth_token) {
     throw new Error(
-      "No credential set. Generate an API key at https://www.scoutpost.ai → Agents → API → Create key, then:\n" +
+      "No credential set. Generate an API key at https://scoutpost.ai → Agents → API → Create key, then:\n" +
         "  scout config set api_key=cj_xxx\n" +
-        "  scout config set api_url=https://www.scoutpost.ai/functions/v1\n" +
+        "  scout config set api_url=https://scoutpost.ai/functions/v1\n" +
         "  For hosted or raw Edge Functions, also set:\n" +
         "  scout config set supabase_anon_key=<SUPABASE_ANON_KEY>",
     );

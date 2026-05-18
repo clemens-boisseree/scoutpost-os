@@ -398,7 +398,7 @@ The public OSS repo is created via `gh`, and the Sustainable Use License (modele
 gh repo create buriedsignals/scoutpost-os \
   --public \
   --description "AI-powered local news monitoring for newsrooms. Self-hosted on Supabase." \
-  --homepage "https://www.scoutpost.ai"
+  --homepage "https://scoutpost.ai"
 ```
 
 Expected: `https://github.com/buriedsignals/scoutpost-os`

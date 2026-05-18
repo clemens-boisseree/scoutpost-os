@@ -8,7 +8,7 @@ Two layers in front of the database, plus a separate broker for the MuckRock OID
 User browser / Anthropic backend
         │
         ▼
-Cloudflare ──► Render (FastAPI on uvicorn, https://www.scoutpost.ai)
+Cloudflare ──► Render (FastAPI on uvicorn, https://scoutpost.ai)
                         │
                         ├── /.well-known/oauth-authorization-server               ─► self-served by FastAPI
                         ├── /.well-known/oauth-protected-resource                 ─► self-served by FastAPI

@@ -96,7 +96,7 @@
 		observer?.disconnect();
 	});
 
-	const mcpOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://www.scoutpost.ai';
+	const mcpOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://scoutpost.ai';
 	$: mcpConfig = JSON.stringify(
 		{
 			mcpServers: {
@@ -277,7 +277,7 @@
 							<div>
 								<h4>Sign in</h4>
 								<p>
-									Open <a href="https://www.scoutpost.ai" target="_blank" rel="noopener noreferrer"
+									Open <a href="https://scoutpost.ai" target="_blank" rel="noopener noreferrer"
 										>scoutpost.ai</a
 									>
 									and sign in with your email address.
@@ -535,7 +535,7 @@
 
 					<h3 id="rest">REST API</h3>
 					<p>
-						Base URL: <code>https://www.scoutpost.ai/functions/v1</code>. Auth via a
+						Base URL: <code>https://scoutpost.ai/functions/v1</code>. Auth via a
 						<code>cj_…</code> API key (create one in the in-app <strong>Agents → API</strong> modal) sent
 						as <code>Authorization: Bearer cj_…</code>. Full OpenAPI 3.1 spec at
 						<a href="/swagger">/swagger</a>; raw JSON at <code>/functions/v1/openapi-spec</code>.
@@ -543,10 +543,10 @@
 
 					<SharpCodeBlock
 						ariaLabel="Copy curl example"
-						code={`curl https://www.scoutpost.ai/functions/v1/scouts \\
+						code={`curl https://scoutpost.ai/functions/v1/scouts \\
   -H "Authorization: Bearer $COJO_TOKEN"
 
-curl "https://www.scoutpost.ai/functions/v1/units?verified=false&limit=20" \\
+curl "https://scoutpost.ai/functions/v1/units?verified=false&limit=20" \\
   -H "Authorization: Bearer $COJO_TOKEN"`}
 					/>
 
@@ -565,14 +565,14 @@ curl "https://www.scoutpost.ai/functions/v1/units?verified=false&limit=20" \\
 					<SharpCodeBlock
 						ariaLabel="Copy CLI install"
 						copyValue={`deno install -A -g -n scout https://raw.githubusercontent.com/buriedsignals/scoutpost-os/master/cli/scout.ts
-scout config set api_url=https://www.scoutpost.ai/functions/v1
+scout config set api_url=https://scoutpost.ai/functions/v1
 scout config set api_key=<cj_... API key>
 scout scouts list`}
 						code={`# Install (requires Deno 2.x)
 deno install -A -g -n scout https://raw.githubusercontent.com/buriedsignals/scoutpost-os/master/cli/scout.ts
 
 # Configure (generate a cj_... API key in the app: Agents → API → Create key)
-scout config set api_url=https://www.scoutpost.ai/functions/v1
+scout config set api_url=https://scoutpost.ai/functions/v1
 scout config set api_key=<cj_... API key>
 
 # Use
@@ -663,9 +663,9 @@ scout units delete <unit-id>`}</code></pre>
 								</tr>
 							</thead>
 							<tbody>
-								<tr><td>App</td><td><code>https://www.scoutpost.ai</code></td></tr>
-								<tr><td>REST API</td><td><code>https://www.scoutpost.ai/functions/v1</code></td></tr>
-								<tr><td>MCP server</td><td><code>https://www.scoutpost.ai/mcp</code></td></tr>
+								<tr><td>App</td><td><code>https://scoutpost.ai</code></td></tr>
+								<tr><td>REST API</td><td><code>https://scoutpost.ai/functions/v1</code></td></tr>
+								<tr><td>MCP server</td><td><code>https://scoutpost.ai/mcp</code></td></tr>
 								<tr><td>OpenAPI spec</td><td><code>/functions/v1/openapi-spec</code> (JSON)</td></tr>
 								<tr><td>Swagger UI</td><td><a href="/swagger">/swagger</a></td></tr>
 								<tr><td>llms.txt</td><td><a href="/llms.txt">/llms.txt</a></td></tr>

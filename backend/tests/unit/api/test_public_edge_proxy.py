@@ -70,7 +70,7 @@ def test_functions_proxy_forwards_path_query_and_jwt_auth(monkeypatch):
             "/functions/v1/openapi-spec?format=json",
             headers={
                 "authorization": "Bearer jwt.demo.token",
-                "host": "www.scoutpost.ai",
+                "host": "scoutpost.ai",
             },
         )
 
@@ -133,16 +133,16 @@ def test_mcp_proxy_serves_authorization_metadata_without_upstream(monkeypatch):
         res = client.get(
             "/mcp/.well-known/oauth-authorization-server",
             headers={
-                "host": "www.scoutpost.ai",
+                "host": "scoutpost.ai",
                 "x-forwarded-proto": "https",
             },
         )
 
     assert res.status_code == 200
-    assert res.json()["issuer"] == "https://www.scoutpost.ai/mcp"
-    assert res.json()["authorization_endpoint"] == "https://www.scoutpost.ai/mcp/authorize"
-    assert res.json()["token_endpoint"] == "https://www.scoutpost.ai/mcp/token"
-    assert res.json()["registration_endpoint"] == "https://www.scoutpost.ai/mcp/register"
+    assert res.json()["issuer"] == "https://scoutpost.ai/mcp"
+    assert res.json()["authorization_endpoint"] == "https://scoutpost.ai/mcp/authorize"
+    assert res.json()["token_endpoint"] == "https://scoutpost.ai/mcp/token"
+    assert res.json()["registration_endpoint"] == "https://scoutpost.ai/mcp/register"
     assert fake.calls == []
     assert res.headers["cache-control"] == "public, max-age=300"
 
@@ -157,18 +157,18 @@ def test_mcp_proxy_serves_protected_resource_metadata_without_upstream(monkeypat
         res = client.get(
             "/.well-known/oauth-protected-resource",
             headers={
-                "host": "www.scoutpost.ai",
+                "host": "scoutpost.ai",
                 "x-forwarded-proto": "https",
             },
         )
 
     assert res.status_code == 200
-    assert res.json()["resource"] == "https://www.scoutpost.ai/mcp"
-    assert res.json()["authorization_servers"] == ["https://www.scoutpost.ai/mcp"]
+    assert res.json()["resource"] == "https://scoutpost.ai/mcp"
+    assert res.json()["authorization_servers"] == ["https://scoutpost.ai/mcp"]
     assert res.json()["bearer_methods_supported"] == ["header"]
     assert res.json()["scopes_supported"] == ["mcp"]
     assert res.json()["resource_documentation"] == (
-        "https://www.scoutpost.ai/skills/scoutpost.md"
+        "https://scoutpost.ai/skills/scoutpost.md"
     )
     assert fake.calls == []
 
@@ -187,12 +187,12 @@ def test_mcp_proxy_serves_authorization_metadata_at_path_suffixed_well_known(mon
         client = _mount()
         res = client.get(
             "/.well-known/oauth-authorization-server/mcp",
-            headers={"host": "www.scoutpost.ai", "x-forwarded-proto": "https"},
+            headers={"host": "scoutpost.ai", "x-forwarded-proto": "https"},
         )
 
     assert res.status_code == 200
     assert res.headers["content-type"].startswith("application/json")
-    assert res.json()["issuer"] == "https://www.scoutpost.ai/mcp"
+    assert res.json()["issuer"] == "https://scoutpost.ai/mcp"
     assert fake.calls == []
 
 
@@ -204,12 +204,12 @@ def test_mcp_proxy_serves_protected_resource_metadata_at_path_suffixed_well_know
         client = _mount()
         res = client.get(
             "/.well-known/oauth-protected-resource/mcp",
-            headers={"host": "www.scoutpost.ai", "x-forwarded-proto": "https"},
+            headers={"host": "scoutpost.ai", "x-forwarded-proto": "https"},
         )
 
     assert res.status_code == 200
     assert res.headers["content-type"].startswith("application/json")
-    assert res.json()["resource"] == "https://www.scoutpost.ai/mcp"
+    assert res.json()["resource"] == "https://scoutpost.ai/mcp"
     assert fake.calls == []
 
 
@@ -222,7 +222,7 @@ def test_mcp_proxy_path_suffixed_well_known_404s_for_non_mcp_resource(monkeypatc
     client = _mount()
     res = client.get(
         "/.well-known/oauth-protected-resource/some-other-thing",
-        headers={"host": "www.scoutpost.ai", "x-forwarded-proto": "https"},
+        headers={"host": "scoutpost.ai", "x-forwarded-proto": "https"},
     )
     assert res.status_code == 404
 

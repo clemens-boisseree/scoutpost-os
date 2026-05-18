@@ -30,11 +30,11 @@ const HOSTED_HOSTS = new Set([
 
 export const HOSTED_AGENT_TARGET: AgentTargetContext = {
   deploymentKind: "hosted",
-  appUrl: "https://www.scoutpost.ai",
-  apiBaseUrl: "https://www.scoutpost.ai/functions/v1",
-  mcpUrl: "https://www.scoutpost.ai/mcp",
-  skillUrl: "https://www.scoutpost.ai/skills/scoutpost.md",
-  apiKeyCreateUrl: "https://www.scoutpost.ai",
+  appUrl: "https://scoutpost.ai",
+  apiBaseUrl: "https://scoutpost.ai/functions/v1",
+  mcpUrl: "https://scoutpost.ai/mcp",
+  skillUrl: "https://scoutpost.ai/skills/scoutpost.md",
+  apiKeyCreateUrl: "https://scoutpost.ai",
 };
 
 function trimSlash(value: string): string {

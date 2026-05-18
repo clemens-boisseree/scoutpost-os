@@ -54,7 +54,7 @@ Auth: Bearer JWT (Supabase auth) **or** Bearer `cj_…` API key plus
 
 ### FastAPI routers (`backend/app/routers/*`)
 
-Reachable at `https://www.scoutpost.ai/api/...`. Hosted on Render.
+Reachable at `https://scoutpost.ai/api/...`. Hosted on Render.
 Frontend is served by the same service in dev; static SPA in production.
 
 | Router | Mount | Purpose | Status |

@@ -364,7 +364,7 @@ async def _send_license_email(email: str, license_key: str):
     <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f4;">
         <!-- Header -->
         <div style="padding: 32px 24px; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.06);">
-            <img src="https://www.scoutpost.ai/static/logo-cojournalist.png" alt="coJournalist" style="height: 32px; width: 126px; margin-bottom: 16px;">
+            <img src="https://scoutpost.ai/static/logo-cojournalist.png" alt="coJournalist" style="height: 32px; width: 126px; margin-bottom: 16px;">
             <h1 style="color: #1a1917; margin: 0; font-size: 22px; font-weight: 600;">Your License Key</h1>
             <p style="color: #57534e; margin: 8px 0 0 0; font-size: 14px;">Self-Hosted Newsroom Edition</p>
         </div>
@@ -385,7 +385,7 @@ async def _send_license_email(email: str, license_key: str):
             <div style="border-top: 1px solid rgba(0, 0, 0, 0.06); padding-top: 28px; text-align: center;">
                 <h2 style="margin: 0 0 16px 0; font-size: 16px; color: #1a1a1a;">Get Started</h2>
 
-                <a href="https://www.scoutpost.ai/setup"
+                <a href="https://scoutpost.ai/setup"
                    style="display: inline-block; width: 100%; max-width: 360px; padding: 16px 32px; background-color: #7c6fc7; background: linear-gradient(135deg, #968bdf, #7c6fc7); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-sizing: border-box;">
                     Open Setup Guide
                 </a>

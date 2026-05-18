@@ -12,8 +12,8 @@ describe("agent target resolution", () => {
       hostname: "www.scoutpost.ai",
     });
 
-    expect(target.mcpUrl).toBe("https://www.scoutpost.ai/mcp");
-    expect(target.apiBaseUrl).toBe("https://www.scoutpost.ai/functions/v1");
+    expect(target.mcpUrl).toBe("https://scoutpost.ai/mcp");
+    expect(target.apiBaseUrl).toBe("https://scoutpost.ai/functions/v1");
   });
 
   it("canonicalizes legacy hosted origins to Scoutpost", () => {
@@ -24,9 +24,9 @@ describe("agent target resolution", () => {
       hostname: "cojournalist.ai",
     });
 
-    expect(target.appUrl).toBe("https://www.scoutpost.ai");
-    expect(target.apiBaseUrl).toBe("https://www.scoutpost.ai/functions/v1");
-    expect(target.skillUrl).toBe("https://www.scoutpost.ai/skills/scoutpost.md");
+    expect(target.appUrl).toBe("https://scoutpost.ai");
+    expect(target.apiBaseUrl).toBe("https://scoutpost.ai/functions/v1");
+    expect(target.skillUrl).toBe("https://scoutpost.ai/skills/scoutpost.md");
   });
 
   it("uses the newsroom Supabase project for self-hosted recipes", () => {
@@ -108,7 +108,7 @@ describe("agent target resolution", () => {
     expect(recipes.paths).toEqual(["mcp"]);
     expect(recipes.default).toBe("mcp");
     expect(recipe?.setupKind).toBe("manual");
-    expect(recipe?.configSnippet).toBe("https://www.scoutpost.ai/mcp");
+    expect(recipe?.configSnippet).toBe("https://scoutpost.ai/mcp");
     expect(recipe?.tagline).toContain("Dynamic Client Registration");
     expect(recipe?.uiSteps?.join("\n")).toContain("OAuth authentication");
   });

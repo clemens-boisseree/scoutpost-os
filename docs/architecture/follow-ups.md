@@ -18,7 +18,7 @@ Backlog of work intentionally left out of recent PRs (#99 hardening / #101 combi
   4. **Cache Rule D**: path starts with `/static/` → cache everything, edge 30d. Email images (`logo-cojournalist.png` etc.) are stable.
   5. **Rate Limiting Rule**: `POST /api/feedback` and `/api/auth/callback` → 10 req/min/IP → Managed Challenge above. Low-volume today; cheap to set up before abuse.
   6. **Transform Rule**: set `Permissions-Policy: camera=(), microphone=(), geolocation=()` at the edge so origin can't forget it.
-- **Verification after apply**: `curl -I https://www.scoutpost.ai/_app/immutable/entry/<real-hash>.js | grep -i cache-control` → should match origin's `immutable`, not be overridden to `max-age=14400`. `curl -I https://www.scoutpost.ai/` → no `max-age=14400` (Rule B bypasses).
+- **Verification after apply**: `curl -I https://scoutpost.ai/_app/immutable/entry/<real-hash>.js | grep -i cache-control` → should match origin's `immutable`, not be overridden to `max-age=14400`. `curl -I https://scoutpost.ai/` → no `max-age=14400` (Rule B bypasses).
 - **Deferred because**: needs Cloudflare dashboard access; out of band from the code PRs.
 
 ---
@@ -101,9 +101,9 @@ Backlog of work intentionally left out of recent PRs (#99 hardening / #101 combi
   (Imports `_NO_STORE_HEADERS` is already in the same module.)
 - **Verification**:
   ```bash
-  curl -sI https://www.scoutpost.ai/api/bogus-does-not-exist | head -2
+  curl -sI https://scoutpost.ai/api/bogus-does-not-exist | head -2
   # expect post-fix: HTTP/2 404 (currently: HTTP/2 500)
-  curl -sI https://www.scoutpost.ai/api/auth/has-users | head -2
+  curl -sI https://scoutpost.ai/api/auth/has-users | head -2
   # expect post-fix on SaaS: HTTP/2 404 (gate removes the route; currently 500 because of same bug)
   ```
 - **Deferred because**: security-intent of D3 (no unauthenticated information disclosure from `/api/auth/has-users`) is already satisfied — the endpoint returns `{"error":"Internal server error"}` not `{"has_users": true}`. Fixing is purely about surfacing correct HTTP semantics so clients can distinguish "not found" from "server crash." Low urgency; ship in its own small PR alongside other L·L·L items.

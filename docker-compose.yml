@@ -23,7 +23,7 @@ services:
       - DEBUG=True
       - LOCAL_MUCKROCK_AUTH_BROKER=true
       - OAUTH_REDIRECT_BASE=http://localhost:5173
-      - APP_POST_LOGIN_REDIRECT=https://www.scoutpost.ai/auth/callback
+      - APP_POST_LOGIN_REDIRECT=https://scoutpost.ai/auth/callback
       - PYTHONUNBUFFERED=1
       - APIFY_API_TOKEN=${APIFY_API_TOKEN}
       - LLM_MODEL=${LLM_MODEL:-qwen/qwen3.5-flash-02-23}

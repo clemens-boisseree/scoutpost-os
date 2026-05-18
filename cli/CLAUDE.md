@@ -97,12 +97,12 @@ in shipped binaries. Local dev builds stay `"dev"`.
 
 `resolvePath` in `lib/client.ts` strips `/functions/v1/` from paths when
 `api_url` doesn't contain `supabase.co`. Lets the same CLI talk to both the
-pre-cutover FastAPI backend (`https://www.scoutpost.ai/api`) and the
+pre-cutover FastAPI backend (`https://scoutpost.ai/api`) and the
 post-cutover Supabase Edge Functions (`https://*.supabase.co`). Remove the
 shim after the cutover is complete and all users have migrated.
 
 **api_url convention:** use the Edge Functions base when talking to Scoutpost
-or Supabase, for example `https://www.scoutpost.ai/functions/v1` or
+or Supabase, for example `https://scoutpost.ai/functions/v1` or
 `https://x.supabase.co/functions/v1`. `resolvePath` still accepts older bare
 Supabase hosts and FastAPI `/api` bases so existing scripts do not fail during
 the migration.

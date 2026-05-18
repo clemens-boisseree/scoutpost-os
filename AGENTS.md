@@ -79,9 +79,9 @@ The Vite/SvelteKit/Render env-var pipeline bit us **5+ times** during the v2 cut
 
 ```bash
 # What got baked into the SPA
-curl -s https://www.scoutpost.ai/_app/env.js
+curl -s https://scoutpost.ai/_app/env.js
 # What URL the api-client will call (look at any chunk + grep)
-curl -s "https://www.scoutpost.ai/_app/immutable/chunks/$(curl -s https://www.scoutpost.ai/ | grep -oE 'chunks/[A-Za-z0-9_-]+\.js' | head -1)" | grep -oE 'https://[^"]+supabase\.co[^"]*' | head -2
+curl -s "https://scoutpost.ai/_app/immutable/chunks/$(curl -s https://scoutpost.ai/ | grep -oE 'chunks/[A-Za-z0-9_-]+\.js' | head -1)" | grep -oE 'https://[^"]+supabase\.co[^"]*' | head -2
 ```
 
 ### When to break the rule
@@ -192,14 +192,14 @@ Keep Supabase integration tests small and direct. Do not build fixture-heavy loc
 
 AI-powered local news monitoring platform. Users create "scouts" that monitor websites, local news, or search queries on schedules, receiving email notifications when criteria are met. Scouts can be scoped by **location** (geo-targeted) or **topic** (keyword-based), or both.
 
-**Production URL:** `https://www.scoutpost.ai` — API at `/api/*`
+**Production URL:** `https://scoutpost.ai` — API at `/api/*`
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
 | Frontend | SvelteKit (static SPA), TailwindCSS |
-| Backend | FastAPI (Python), hosted on Render — production at `https://www.scoutpost.ai/api` |
+| Backend | FastAPI (Python), hosted on Render — production at `https://scoutpost.ai/api` |
 | Database | DynamoDB (scout metadata + run history) |
 | Scheduling | AWS EventBridge Scheduler |
 | Auth | MuckRock OAuth 2.0 (SaaS, session cookies) / Supabase Auth (OSS, Bearer JWT) |

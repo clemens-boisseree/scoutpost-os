@@ -1,6 +1,6 @@
 # MCP — Scoutpost remote MCP server
 
-Public, OAuth-protected MCP server at `https://www.scoutpost.ai/mcp`. MCP clients (Claude Cowork, Claude Desktop, claude.ai, Codex Desktop, Cursor, Windsurf, Gemini CLI, Goose, Hermes, Langdock) connect via Streamable HTTP, authenticate via OAuth 2.1 + RFC 7591 Dynamic Client Registration + PKCE, and call JSON-RPC tools that fan out to the rest of the platform (units search, scout management, project ingest).
+Public, OAuth-protected MCP server at `https://scoutpost.ai/mcp`. MCP clients (Claude Cowork, Claude Desktop, claude.ai, Codex Desktop, Cursor, Windsurf, Gemini CLI, Goose, Hermes, Langdock) connect via Streamable HTTP, authenticate via OAuth 2.1 + RFC 7591 Dynamic Client Registration + PKCE, and call JSON-RPC tools that fan out to the rest of the platform (units search, scout management, project ingest).
 
 **Spec versions:**
 - MCP Authorization spec `2025-06-18` (Streamable HTTP)

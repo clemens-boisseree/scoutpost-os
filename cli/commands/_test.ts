@@ -138,14 +138,14 @@ Deno.test("resolvePath — bare Supabase URL keeps /functions/v1/ prefix", () =>
 });
 
 Deno.test("resolvePath — base URL with /functions/v1 strips duplicate prefix", () => {
-  const hosted = "https://www.scoutpost.ai/functions/v1";
+  const hosted = "https://scoutpost.ai/functions/v1";
   const supabase = "https://newsroom-project.supabase.co/functions/v1";
   assertEquals(resolvePath("/functions/v1/scouts", hosted), "/scouts");
   assertEquals(resolvePath("/functions/v1/scouts", supabase), "/scouts");
 });
 
 Deno.test("resolvePath — FastAPI URL strips /functions/v1/ prefix", () => {
-  const api = "https://www.scoutpost.ai/api";
+  const api = "https://scoutpost.ai/api";
   assertEquals(resolvePath("/functions/v1/scouts", api), "/scouts");
   assertEquals(
     resolvePath("/functions/v1/projects/xyz", api),
@@ -159,7 +159,7 @@ Deno.test("resolvePath — FastAPI URL strips /functions/v1/ prefix", () => {
 
 Deno.test("resolvePath — leaves non-/functions/v1 paths alone on both backends", () => {
   const supa = "https://x.supabase.co/functions/v1";
-  const fastapi = "https://www.scoutpost.ai/api";
+  const fastapi = "https://scoutpost.ai/api";
   assertEquals(resolvePath("/health", supa), "/health");
   assertEquals(resolvePath("/health", fastapi), "/health");
   assertEquals(resolvePath("health", fastapi), "/health");
@@ -286,7 +286,7 @@ Deno.test("apiFetch — uses api_key over auth_token, sends apikey header for Su
 Deno.test("apiFetch — sends apikey header for hosted Edge Functions when configured", async () => {
   await withTempHome(async () => {
     writeConfigFile({
-      api_url: "https://www.scoutpost.ai/functions/v1",
+      api_url: "https://scoutpost.ai/functions/v1",
       api_key: "cj_preferred",
       supabase_anon_key: "anon_test_key",
     });
@@ -323,7 +323,7 @@ Deno.test("apiFetch — sends apikey header for hosted Edge Functions when confi
       auth: string;
       apikey: string;
     };
-    assertStringIncludes(obs.url, "www.scoutpost.ai/functions/v1/units");
+    assertStringIncludes(obs.url, "scoutpost.ai/functions/v1/units");
     assertEquals(obs.auth, "Bearer cj_preferred");
     assertEquals(obs.apikey, "anon_test_key");
   });
@@ -375,7 +375,7 @@ Deno.test("user me — fetches /user/me and prints account state", async () => {
 Deno.test("apiFetch — falls back to auth_token when api_key absent, omits apikey header for non-Supabase", async () => {
   await withTempHome(async () => {
     writeConfigFile({
-      api_url: "https://www.scoutpost.ai/api",
+      api_url: "https://scoutpost.ai/api",
       auth_token: "cj_legacy",
     });
 
@@ -411,7 +411,7 @@ Deno.test("apiFetch — falls back to auth_token when api_key absent, omits apik
       auth: string;
       apikey: string | null;
     };
-    assertStringIncludes(obs.url, "www.scoutpost.ai/api/units");
+    assertStringIncludes(obs.url, "scoutpost.ai/api/units");
     assertEquals(obs.auth, "Bearer cj_legacy");
     assertEquals(obs.apikey, null);
   });
@@ -449,7 +449,7 @@ Deno.test("apiFetch — surfaces non-2xx as a thrown Error", async () => {
 Deno.test("scouts add — forwards civic, schedule, and source-discovery fields", async () => {
   await withTempHome(async () => {
     writeConfigFile({
-      api_url: "https://www.scoutpost.ai/functions/v1",
+      api_url: "https://scoutpost.ai/functions/v1",
       api_key: "cj_test",
       supabase_anon_key: "anon",
     });
@@ -525,7 +525,7 @@ Deno.test("scouts add — forwards civic, schedule, and source-discovery fields"
 Deno.test("scouts add — forwards topic for scheduled web scouts", async () => {
   await withTempHome(async () => {
     writeConfigFile({
-      api_url: "https://www.scoutpost.ai/functions/v1",
+      api_url: "https://scoutpost.ai/functions/v1",
       api_key: "cj_test",
       supabase_anon_key: "anon",
     });
@@ -580,7 +580,7 @@ Deno.test("scouts add — forwards topic for scheduled web scouts", async () => 
 Deno.test("ingest text — sends API-compatible text field", async () => {
   await withTempHome(async () => {
     writeConfigFile({
-      api_url: "https://www.scoutpost.ai/functions/v1",
+      api_url: "https://scoutpost.ai/functions/v1",
       api_key: "cj_test",
       supabase_anon_key: "anon",
     });

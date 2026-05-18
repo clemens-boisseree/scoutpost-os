@@ -55,7 +55,7 @@ or a legacy `auth_token` JWT.
 
 ```bash
 # Hosted Scoutpost — recommended
-scout config set api_url=https://www.scoutpost.ai/functions/v1
+scout config set api_url=https://scoutpost.ai/functions/v1
 scout config set api_key=cj_xxxxxxxxxxxxxxxxxx
 scout config set supabase_anon_key=<SUPABASE_ANON_KEY>
 

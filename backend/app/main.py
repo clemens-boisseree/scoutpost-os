@@ -15,6 +15,7 @@ import re
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,6 +114,12 @@ _EMAIL_ASSET_EXTENSIONS = frozenset(
 )
 _EMAIL_ASSET_HEADERS = {"cache-control": "public, max-age=86400"}
 _MARKDOWN_CACHE_HEADERS = {"cache-control": "no-cache, must-revalidate"}
+_CANONICAL_REDIRECT_HOSTS = {
+    "cojournalist.ai",
+    "www.cojournalist.ai",
+    "www.scoutpost.ai",
+}
+_CANONICAL_PUBLIC_HOST = "scoutpost.ai"
 
 
 def _is_asset_path(path: str) -> bool:
@@ -228,7 +235,7 @@ class EmailStaticFiles(StaticFiles):
     """Tight static mount for email images only.
 
     Email templates (e.g. license-key onboarding) embed images via absolute
-    URLs like `https://www.scoutpost.ai/static/logo-cojournalist.png` so
+    URLs like `https://scoutpost.ai/static/logo-cojournalist.png` so
     Resend can fetch them at send time. Only allow image files at the root
     of the static directory — no subdirectories, no `.html`, no `.txt`, no
     hashed bundles under `_app/immutable/`. This prevents the `/static/`
@@ -364,6 +371,21 @@ async def _add_no_store_on_error_responses(request: Request, call_next):
 
 
 app.middleware("http")(_add_no_store_on_error_responses)
+
+
+@app.middleware("http")
+async def redirect_to_canonical_host(request: Request, call_next):
+    """Permanently move legacy and www traffic to canonical Scoutpost apex."""
+    raw_host = request.headers.get("host", "")
+    host = raw_host.split(":", 1)[0].lower()
+    if host in _CANONICAL_REDIRECT_HOSTS:
+        path = quote(request.url.path, safe="/%")
+        query = f"?{request.url.query}" if request.url.query else ""
+        return Response(
+            status_code=308,
+            headers={"location": f"https://{_CANONICAL_PUBLIC_HOST}{path}{query}"},
+        )
+    return await call_next(request)
 
 
 @app.middleware("http")

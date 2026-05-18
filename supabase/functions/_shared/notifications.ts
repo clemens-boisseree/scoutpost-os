@@ -942,7 +942,7 @@ export function buildBaseHtml(p: BaseHtmlParams): string {
   const ctaSection = p.ctaText
     ? `
       <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid ${COLORS.border}; text-align: center;">
-        <a href="https://www.scoutpost.ai" style="color: ${accentColor}; text-decoration: none; font-size: 14px; font-family: ${FONT_BODY};">
+        <a href="https://scoutpost.ai" style="color: ${accentColor}; text-decoration: none; font-size: 14px; font-family: ${FONT_BODY};">
           ${escapeHtml(p.ctaText)}
         </a>
       </div>`
@@ -965,8 +965,8 @@ export function buildBaseHtml(p: BaseHtmlParams): string {
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="${COLORS.surfaceAlt}" style="width: 100%; max-width: 640px; border: 1px solid ${COLORS.borderStrong}; background: ${COLORS.surfaceAlt};">
             <tr>
               <td bgcolor="${COLORS.surfaceAlt}" style="padding: 24px 24px 8px 24px; background: ${COLORS.surfaceAlt};">
-                <a href="https://www.scoutpost.ai" style="text-decoration: none; border: 0;">
-                  <img src="https://www.scoutpost.ai/logo-scoutpost-email@2x.png" alt="scoutpost" width="180" height="45" style="display: block; border: 0; outline: none; text-decoration: none; max-width: 100%; height: auto;" />
+                <a href="https://scoutpost.ai" style="text-decoration: none; border: 0;">
+                  <img src="https://scoutpost.ai/logo-scoutpost-email@2x.png" alt="scoutpost" width="180" height="45" style="display: block; border: 0; outline: none; text-decoration: none; max-width: 100%; height: auto;" />
                 </a>
               </td>
             </tr>

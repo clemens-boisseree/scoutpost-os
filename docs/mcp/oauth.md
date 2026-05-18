@@ -9,15 +9,15 @@ Full server-side mint chain. Five hops, no client-side HTML bounce.
 Client fetches RFC 9728 §3.1 path-suffixed well-known:
 
 ```
-GET https://www.scoutpost.ai/.well-known/oauth-protected-resource/mcp
+GET https://scoutpost.ai/.well-known/oauth-protected-resource/mcp
 
 200 application/json
 {
-  "resource": "https://www.scoutpost.ai/mcp",
-  "authorization_servers": ["https://www.scoutpost.ai/mcp"],
+  "resource": "https://scoutpost.ai/mcp",
+  "authorization_servers": ["https://scoutpost.ai/mcp"],
   "bearer_methods_supported": ["header"],
   "scopes_supported": ["mcp"],
-  "resource_documentation": "https://www.scoutpost.ai/skills/scoutpost.md"
+  "resource_documentation": "https://scoutpost.ai/skills/scoutpost.md"
 }
 ```
 
@@ -27,14 +27,14 @@ some clients only fetch that.
 Then the authorization-server metadata:
 
 ```
-GET https://www.scoutpost.ai/.well-known/oauth-authorization-server/mcp
+GET https://scoutpost.ai/.well-known/oauth-authorization-server/mcp
 
 200 application/json
 {
-  "issuer": "https://www.scoutpost.ai/mcp",
-  "authorization_endpoint": "https://www.scoutpost.ai/mcp/authorize",
-  "token_endpoint": "https://www.scoutpost.ai/mcp/token",
-  "registration_endpoint": "https://www.scoutpost.ai/mcp/register",
+  "issuer": "https://scoutpost.ai/mcp",
+  "authorization_endpoint": "https://scoutpost.ai/mcp/authorize",
+  "token_endpoint": "https://scoutpost.ai/mcp/token",
+  "registration_endpoint": "https://scoutpost.ai/mcp/register",
   "response_types_supported": ["code"],
   "grant_types_supported": ["authorization_code", "refresh_token"],
   "code_challenge_methods_supported": ["S256"],
@@ -44,7 +44,7 @@ GET https://www.scoutpost.ai/.well-known/oauth-authorization-server/mcp
 ```
 
 The `issuer` MUST equal the base URL clients pasted, exactly.
-`MCP_SERVER_BASE_URL=https://www.scoutpost.ai/mcp` pins it; without that env
+`MCP_SERVER_BASE_URL=https://scoutpost.ai/mcp` pins it; without that env
 var the function self-references via `SUPABASE_URL` and clients reject the
 issuer.
 
@@ -53,7 +53,7 @@ issuer.
 Public, no auth. PKCE-only client:
 
 ```
-POST https://www.scoutpost.ai/mcp/register
+POST https://scoutpost.ai/mcp/register
 Content-Type: application/json
 
 {
@@ -79,7 +79,7 @@ clients.
 ### 3. Authorize
 
 ```
-GET https://www.scoutpost.ai/mcp/authorize?
+GET https://scoutpost.ai/mcp/authorize?
     response_type=code&
     client_id=<dcr_id>&
     redirect_uri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&
@@ -144,7 +144,7 @@ errored and left the user on a non-redirecting page.
 Anthropic POSTs back to claude.ai's callback, which calls our token endpoint:
 
 ```
-POST https://www.scoutpost.ai/mcp/token
+POST https://scoutpost.ai/mcp/token
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=authorization_code&
@@ -186,7 +186,7 @@ Every method (including `initialize` and `notifications/initialized`) requires
 
 ```
 HTTP 401
-WWW-Authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://www.scoutpost.ai/mcp/.well-known/oauth-protected-resource"
+WWW-Authenticate: Bearer realm="MCP", error="invalid_token", resource_metadata="https://scoutpost.ai/mcp/.well-known/oauth-protected-resource"
 Content-Type: application/json
 
 {"jsonrpc":"2.0","id":<reqid>,"error":{"code":-32001,"message":"missing bearer token"}}
