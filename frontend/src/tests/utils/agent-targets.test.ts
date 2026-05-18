@@ -100,4 +100,16 @@ describe("agent target resolution", () => {
       "gemini mcp add --transport http scoutpost",
     );
   });
+
+  it("keeps Langdock on the OAuth DCR MCP path", () => {
+    const recipes = getAgentRecipes("langdock");
+    const recipe = recipes.recipes.mcp;
+
+    expect(recipes.paths).toEqual(["mcp"]);
+    expect(recipes.default).toBe("mcp");
+    expect(recipe?.setupKind).toBe("manual");
+    expect(recipe?.configSnippet).toBe("https://www.scoutpost.ai/mcp");
+    expect(recipe?.tagline).toContain("Dynamic Client Registration");
+    expect(recipe?.uiSteps?.join("\n")).toContain("OAuth authentication");
+  });
 });

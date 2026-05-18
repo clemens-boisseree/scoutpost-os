@@ -102,10 +102,15 @@ if [ -d docs/mcp ]; then
 fi
 
 # -------------------------------------------------------------------
-# Scripts: keep the OSS-friendly smoke test; drop the one-time SaaS
-# migration tooling (pulls DynamoDB via MuckRock-issued IAM creds).
+# Scripts: keep the OSS-friendly smoke test; drop hosted SaaS-only
+# migration and user-announcement tooling.
 # -------------------------------------------------------------------
 rm -rf scripts/migrate/
+# Hosted SaaS-only user update sender. It resolves recipient email addresses
+# through MuckRock and sends through the hosted Resend account.
+rm -f scripts/send-user-update-email.ts
+rm -f USER_UPDATE_EMAIL.md
+rm -f docs/operations/user-update-email.md
 
 # Private live benchmark harness. These scripts assume hosted Supabase Auth
 # Admin access, internal service auth, and production operator credentials.

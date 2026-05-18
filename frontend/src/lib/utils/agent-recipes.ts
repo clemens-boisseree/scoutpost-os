@@ -332,6 +332,29 @@ url = "{{MCP_URL}}"`,
     ],
   },
 
+  langdock: {
+    tagline:
+      "Add Scoutpost as a custom MCP integration in Langdock using OAuth with Dynamic Client Registration.",
+    setupKind: "manual",
+    mode: "ui-steps",
+    uiSteps: [
+      "Open Langdock and go to the integrations area for adding an MCP server.",
+      "Create a custom MCP integration or server connection.",
+      "Choose OAuth authentication with Dynamic Client Registration when Langdock asks for the authentication method.",
+      "Paste the URL below as the MCP server URL.",
+      "Save the integration, connect it, and approve the Scoutpost OAuth sign-in when Langdock opens it.",
+      "Enable the connected Scoutpost integration for the assistant or workspace where you want to use it.",
+    ],
+    configSnippet: MCP_URL,
+    docsUrl: "https://docs.langdock.com/resources/integrations/mcp",
+    docsLabel: "Langdock MCP docs",
+    verifySteps: [
+      "Open a Langdock assistant or chat where the Scoutpost integration is enabled.",
+      'Ask: "List my Scoutpost scouts."',
+      "If Langdock asks for manual OAuth URLs instead of DCR, use the generic MCP recipe or re-create the integration with OAuth + DCR selected.",
+    ],
+  },
+
   other: {
     tagline: "Any MCP-speaking client. Paste this URL and authorize.",
     setupKind: "manual",
@@ -357,7 +380,7 @@ const CLI_CAPABLE: AgentSlug[] = [
 ];
 
 const CLI_ONLY: AgentSlug[] = ["codex-cli"];
-const MCP_ONLY: AgentSlug[] = ["claude-cowork", "codex-mcp"];
+const MCP_ONLY: AgentSlug[] = ["claude-cowork", "codex-mcp", "langdock"];
 
 export interface AgentRecipes {
   /** Which paths are available for this agent, in display order. */
@@ -447,6 +470,7 @@ const SKILL_LOCATIONS: Record<AgentSlug, string> = {
   openclaw:
     "somewhere your agent loads on startup (project rules, system prompt, or memory)",
   hermes: "~/.hermes/skills/scoutpost.md",
+  langdock: "Langdock assistant instructions or workspace knowledge",
   other:
     "somewhere your agent loads on startup (project rules, system prompt, or memory)",
 };

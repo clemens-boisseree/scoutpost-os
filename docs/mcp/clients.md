@@ -115,6 +115,19 @@ mcp_servers:
 
 Reload Hermes. Reference: <https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp>.
 
+## Langdock
+
+Langdock supports custom MCP integrations with OAuth and Dynamic Client Registration. Use that path for Scoutpost; do not use API-key auth or advanced/manual OAuth unless Langdock's DCR path is unavailable.
+
+1. Open Langdock's integrations area for adding an MCP server.
+2. Create a custom MCP integration or server connection.
+3. Choose OAuth authentication with Dynamic Client Registration.
+4. Paste `https://www.scoutpost.ai/mcp` as the MCP server URL.
+5. Save/connect the integration and approve the Scoutpost OAuth sign-in.
+6. Enable the connected Scoutpost integration for the assistant or workspace that should use it.
+
+Reference: <https://docs.langdock.com/resources/integrations/mcp>.
+
 ## OpenClaw
 
 Native MCP client support is in active beta. Tracked upstream at openclaw/openclaw#29053. Once it lands, paste `https://www.scoutpost.ai/mcp` into the MCP extensions panel.
