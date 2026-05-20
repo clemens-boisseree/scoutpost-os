@@ -257,9 +257,9 @@ Enables `promise-checker-lambda` to efficiently query promises by due date.
 
 ## Related Docs
 
-- `docs/architecture/records-and-deduplication.md` - DynamoDB record types
-- `docs/architecture/aws-architecture.md` - Lambda functions, DynamoDB, EventBridge
-- `docs/architecture/fastapi-endpoints.md` - Full endpoint reference
+- `docs/supabase/civic-pipeline.md` - Civic Scout queue and extraction pipeline
+- `docs/supabase/scouts-runs.md` - scout scheduling and run records
+- `docs/architecture/fastapi-endpoints.md` - residual FastAPI endpoint reference
 
 ---
 

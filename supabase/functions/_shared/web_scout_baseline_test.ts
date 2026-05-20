@@ -1,6 +1,4 @@
-import {
-  assertEquals,
-} from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.208.0/assert/mod.ts";
 import type { SupabaseClient } from "./supabase.ts";
 import {
   ensureWebBaseline,
@@ -73,6 +71,15 @@ Deno.test("ensureWebBaseline stores only baseline state for firecrawl_plain scou
 
   assertEquals(changed, true);
   assertEquals(inserts.map((entry) => entry.table), ["raw_captures"]);
+  assertEquals(
+    (inserts[0].payload as Record<string, unknown>).canonicalizer_version,
+    "web-md-v1",
+  );
+  assertEquals(
+    typeof (inserts[0].payload as Record<string, unknown>)
+      .canonical_content_sha256,
+    "string",
+  );
   assertEquals(updates.map((entry) => entry.table), ["scouts"]);
   assertEquals(rpcs.length, 0);
 });
@@ -99,27 +106,33 @@ Deno.test("ensureWebBaseline no-ops when the scout already has a baseline", asyn
 Deno.test("maybeInitializeMissingWebBaselineRun short-circuits first run to baseline-only", async () => {
   const { svc, inserts, updates, rpcs } = createFakeSvc();
 
-  const result = await maybeInitializeMissingWebBaselineRun(
-    svc as unknown as SupabaseClient,
-    {
-      id: "scout-1",
-      user_id: "user-1",
-      url: "https://example.com",
-      provider: "firecrawl",
-      baseline_established_at: null,
-      name: "Planning Board",
-    },
-    "run-1",
-    {
-      doubleProbe: async () => "firecrawl",
-      firecrawlScrape: async () => ({
-        markdown: "",
-        source_url: "https://example.com",
-        fetched_at: "2026-04-24T00:00:00Z",
-      }),
-      now: () => "2026-04-24T00:00:00Z",
-    },
-  );
+  Deno.env.set("WEB_SCOUT_CANONICAL_HASH_ENABLED", "false");
+  let result;
+  try {
+    result = await maybeInitializeMissingWebBaselineRun(
+      svc as unknown as SupabaseClient,
+      {
+        id: "scout-1",
+        user_id: "user-1",
+        url: "https://example.com",
+        provider: "firecrawl",
+        baseline_established_at: null,
+        name: "Planning Board",
+      },
+      "run-1",
+      {
+        doubleProbe: async () => "firecrawl",
+        firecrawlScrape: async () => ({
+          markdown: "",
+          source_url: "https://example.com",
+          fetched_at: "2026-04-24T00:00:00Z",
+        }),
+        now: () => "2026-04-24T00:00:00Z",
+      },
+    );
+  } finally {
+    Deno.env.delete("WEB_SCOUT_CANONICAL_HASH_ENABLED");
+  }
 
   assertEquals(result?.articles_count, 0);
   assertEquals(result?.merged_existing_count, 0);

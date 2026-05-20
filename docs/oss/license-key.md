@@ -671,6 +671,5 @@ The `POST /api/license/validate` endpoint is public (no auth required — the ke
 | `backend/app/services/license_key_service.py` | DynamoDB CRUD for LICENSE# and STRIPE_SUB# records |
 | `backend/app/config.py` | New Stripe env vars |
 | `backend/app/main.py` | Router registration |
-| `docs/architecture/records-and-deduplication.md` | Add LICENSE# and STRIPE_SUB# record types |
 
 No new tables. No new infrastructure. No new services to deploy. The entire feature is ~200 lines of Python added to the existing FastAPI backend.

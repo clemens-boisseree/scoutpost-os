@@ -9,6 +9,12 @@ Never praise my questions or validate my premises before answering. If I'm wrong
 
 ---
 
+## GitHub Operations
+
+Always use the `gh` CLI for GitHub operations, including PR creation, PR edits, comments, reviews, checks, issues, and workflow inspection. Do not use GitHub connector/app tools unless `gh` is unavailable or the user explicitly requests a connector.
+
+---
+
 <!-- test: verify Codex GitHub Actions workflows -->
 
 ## Deployment Workflow - MANDATORY
@@ -199,9 +205,9 @@ AI-powered local news monitoring platform. Users create "scouts" that monitor we
 | Layer | Technology |
 |-------|------------|
 | Frontend | SvelteKit (static SPA), TailwindCSS |
-| Backend | FastAPI (Python), hosted on Render — production at `https://scoutpost.ai/api` |
-| Database | DynamoDB (scout metadata + run history) |
-| Scheduling | AWS EventBridge Scheduler |
+| Backend | Supabase Edge Functions for scout CRUD/execution + residual FastAPI on Render |
+| Database | Supabase Postgres |
+| Scheduling | Supabase `pg_cron` |
 | Auth | MuckRock OAuth broker -> Supabase Auth JWT (SaaS) / Supabase Auth (OSS, Bearer JWT) |
 | AI | Gemini 2.5 Flash-Lite (default LLM, direct API), OpenRouter (fallback), Firecrawl (web search) |
 | Email | Resend |
@@ -212,22 +218,23 @@ AI-powered local news monitoring platform. Users create "scouts" that monitor we
 ```
 /
 ├── frontend/          # SvelteKit SPA
-├── backend/           # FastAPI Python backend
-├── aws/               # Lambda functions + infrastructure
+├── supabase/          # Edge Functions + Postgres migrations
+├── backend/           # residual FastAPI Python backend
+├── cli/               # Deno scout CLI
 └── docs/              # Detailed architecture docs
 ```
 
 ## Key Documentation
 
-- **AWS Architecture**: `docs/architecture/aws-architecture.md` - Lambda functions, DynamoDB schema, EventBridge
+- **Supabase Edge Functions**: `docs/supabase/edge-functions.md` - live scout CRUD/execution functions
 - **API Endpoints**: `docs/architecture/fastapi-endpoints.md` - All REST endpoints with examples
 - **Page Scouts**: `docs/features/web-scouts.md` - Website change detection
-- **Records & Dedup**: `docs/architecture/records-and-deduplication.md` - DynamoDB records, dedup layers
+- **Scout Runs**: `docs/supabase/scouts-runs.md` - Supabase scout and run records
+- **Units & Dedup**: `docs/supabase/units-entities.md` - canonical information units and dedup
 - **Entitlements & Credits**: `docs/muckrock/plans-and-entitlements.md` - MuckRock entitlement tiers, credit costs
 - **MuckRock Integration**: `docs/muckrock/oauth-integration.md` - OAuth flow, session management
 - **Team Plan**: `docs/muckrock/entitlements-team-design.md` - Shared credit pool, ORG# records, seat management
 - **OSS / Self-Hosted**: `docs/oss/` - Architecture, adapters, Supabase, licensing, deployment, automation
-- **AWS Deployment**: `aws/README.md` - Lambda deployment commands
 
 ## Service Documentation
 
@@ -235,7 +242,7 @@ Detailed docs for each sidebar service in `docs/features/`:
 
 | Service | File | Description |
 |---------|------|-------------|
-| Page Scout (type `web`) | `web-scouts.md` | Firecrawl changeTracking, per-scout baselines, criteria analysis |
+| Page Scout (type `web`) | `web-scouts.md` | fresh Firecrawl scrape, local canonical hash baselines, criteria analysis |
 | Location Scout (type `beat`) | `beat.md` | Location-based monitoring — niche local sources by default |
 | Beat Scout (type `beat`) | `beat.md` | Topic/criteria monitoring — reliable sources by default |
 | Scrape | `scrape.md` | Firecrawl extraction, format options |
@@ -247,38 +254,38 @@ Detailed docs for each sidebar service in `docs/features/`:
 
 | View | Internal Type | Primary Runtime | Orchestrator |
 |------|---------------|-----------------|--------------|
-| Page Scout | `web` | `scout-web-execute` | `scout_service.py` |
+| Page Scout | `web` | `scout-web-execute` | `scout-web-execute/index.ts` |
 | Location Scout | `beat` | `scout-beat-execute` | `beat_pipeline.ts` |
 | Beat Scout | `beat` | `scout-beat-execute` | `beat_pipeline.ts` |
-| Social Scout | `social` | `social-kickoff` | `social_orchestrator.py` |
-| Civic Scout | `civic` | `civic-execute` | `civic_orchestrator.py` |
-| Scrape | N/A | `data_extractor.py` | `firecrawl_client.py` |
-| Feed / Export | N/A | `export.py` | `export_generator.py` |
+| Social Scout | `social` | `social-kickoff` | `social-kickoff/index.ts` |
+| Civic Scout | `civic` | `civic-execute` | `civic-execute/index.ts` |
+| Scrape / Ingest | N/A | `ingest` | `ingest/index.ts` |
+| Feed / Export | N/A | `units` + residual FastAPI export | `units/index.ts` |
 
 ## Admin Dashboard (SaaS-only, stripped from OSS mirror)
 
-Revenue reporting for MuckRock pilot invoicing. Accessible at `/api/admin/` (browser) by users in `ADMIN_EMAILS`.
+Revenue reporting for MuckRock pilot invoicing. Accessible through the
+Supabase `admin-report` Edge Function and the SvelteKit admin page by users in
+`ADMIN_EMAILS`.
 
 | File | Purpose |
 |------|---------|
-| `backend/app/routers/admin.py` | Dashboard HTML + JSON API endpoints |
-| `backend/app/services/admin_report_service.py` | Report generation, metrics, email template |
-| `backend/app/adapters/aws/admin_storage.py` | USAGE# record storage + aggregate queries |
-| `backend/app/schemas/admin.py` | Pydantic response models |
-| `backend/app/dependencies/auth.py` | `require_admin` dependency (ADMIN_EMAILS check) |
+| `supabase/functions/admin-report/index.ts` | Metrics, usage query, monthly report, email send |
+| `supabase/migrations/00025_credits.sql` | Credit pools and `usage_records` audit table |
+| `frontend/src/routes/admin/+page.svelte` | Browser admin page |
 
-**USAGE# records:** Written on every credit decrement (fire-and-forget from `decrement_credit()` in `billing.py`). Stored in DynamoDB with 90-day TTL. PK is `ORG#{id}` or `USER#{id}`, SK is `USAGE#{timestamp}#{uuid}`.
+**Usage records:** Written inside the Supabase `decrement_credits`
+transaction. Stored in `usage_records` with 90-day retention and rolled up by
+`admin-report`.
 
 **Endpoints:**
-- `GET /api/admin/` — Browser dashboard (metrics + current month invoice)
-- `GET /api/admin/usage?start_date=X&end_date=Y` — Query usage records
-- `GET /api/admin/metrics` — Users by tier, orgs, scouts
-- `POST /api/admin/report/monthly?year=X&month=Y` — Invoice JSON
-- `POST /api/admin/report/send-email?year=X&month=Y` — Send report via Resend
+- `GET /admin-report/usage?start_date=X&end_date=Y` — Query usage records
+- `GET /admin-report/metrics` — Users by tier, orgs, scouts
+- `POST /admin-report/report/monthly?year=X&month=Y` — Invoice JSON
+- `POST /admin-report/report/send-email?year=X&month=Y` — Send report via Resend
 
 ## Directory-Specific Guides
 
-- `/aws/AGENTS.md` - AWS infrastructure and Lambda details
 - `/backend/AGENTS.md` - FastAPI structure and services
 - `/cli/AGENTS.md` - `scout` CLI release procedure and conventions
 - `/frontend/AGENTS.md` - SvelteKit components and stores
@@ -320,24 +327,22 @@ directly from the public mirror with Deno.
 
 **Scout topics are tags:** The UI stores multiple topics as a comma-separated string when saving a scout, but those values are semantically independent tags. Frontend display, filters, counts, and suggestions must use `frontend/src/lib/utils/topics.ts` (`parseTopicTags`, `collectTopicCounts`, `topicMatches`) rather than comparing `scout.topic` as one opaque string.
 
-**Page Scout change detection:** Uses Firecrawl `changeTracking` with per-scout `tag` parameter. Each scout has its own baseline. See `docs/features/web-scouts.md`.
+**Page Scout change detection:** Uses fresh Firecrawl scrape output plus a local, versioned canonical markdown hash stored in `raw_captures`. Legacy Firecrawl `changeTracking` remains only as a migration path for older scouts. See `docs/features/web-scouts.md`.
 
 **Page Scout first-run extraction:** Users control whether to import existing page data via "Import current page data" toggle. OFF (default) establishes baseline only; ON extracts content to knowledge base.
 
 ## Data Flow
 
 ```
-User creates scout → FastAPI → AWS API Gateway → Lambda creates:
-                                                  ├── EventBridge Schedule (cron)
-                                                  └── DynamoDB SCRAPER# record
+User creates scout → Supabase Edge Function → `scouts` row
+                                      └── `schedule_scout` RPC registers pg_cron
 
-On schedule → EventBridge → scraper-lambda → FastAPI scouts endpoint:
-                                             ├── Execute scout logic
-                                             ├── AI analysis
-                                             ├── Send notification (Resend)
-                                             └── Decrement credits (MuckRock entitlements)
-                            ↓
-              scraper-lambda stores TIME# record in DynamoDB
+On schedule → pg_cron → execute-scout Edge Function:
+                                      ├── Route to scout-type executor
+                                      ├── Execute scout logic
+                                      ├── Store raw captures + information units
+                                      ├── Send notification (Resend)
+                                      └── Decrement credits via Supabase RPC
 ```
 
 ## Pre-Commit Verification - MANDATORY
@@ -421,11 +426,7 @@ feature branch → push → CI runs
 - `FIRECRAWL_API_KEY` - Web scraping
 - `APIFY_API_TOKEN` - Apify API token (social media scraping)
 - `RESEND_API_KEY` - Email notifications
-- `INTERNAL_SERVICE_KEY` - Lambda → FastAPI auth
-- `AWS_API_BASE_URL` - AWS API Gateway URL
+- `INTERNAL_SERVICE_KEY` - internal Edge Function service auth
 
 ### Frontend (Build-time)
 - `PUBLIC_MAPTILER_API_KEY` - Geocoding
-
-### AWS Lambda
-- See `aws/README.md` for Lambda-specific env vars

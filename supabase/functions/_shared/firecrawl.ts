@@ -41,6 +41,10 @@ export interface ScrapeOptions {
   timeoutMs?: number;
   /** Client-side AbortController fuse in ms. Defaults to timeoutMs + 5000. */
   abortAfterMs?: number;
+  /** Firecrawl cache freshness in ms. Omitted by default to preserve caller behavior. */
+  maxAgeMs?: number;
+  /** Whether Firecrawl may store this scrape in its cache. Omitted by default. */
+  storeInCache?: boolean;
 }
 
 export async function firecrawlScrape(
@@ -60,6 +64,8 @@ export async function firecrawlScrape(
   if (pdfMode !== null) {
     body.parsers = [{ type: "pdf", mode: pdfMode }];
   }
+  if (opts.maxAgeMs !== undefined) body.maxAge = opts.maxAgeMs;
+  if (opts.storeInCache !== undefined) body.storeInCache = opts.storeInCache;
 
   const ac = new AbortController();
   const fuse = setTimeout(() => ac.abort(), abortAfterMs);
@@ -440,6 +446,8 @@ export interface PrimaryPageScrapeOptions {
   onlyMainContent?: boolean;
   timeoutMs?: number;
   abortAfterMs?: number;
+  maxAgeMs?: number;
+  storeInCache?: boolean;
   retryDelayMs?: number;
   deps?: Partial<PrimaryPageScrapeDeps>;
 }
@@ -455,6 +463,8 @@ export async function scrapePrimaryPageResilient(
     onlyMainContent: opts.onlyMainContent,
     timeoutMs: opts.timeoutMs,
     abortAfterMs: opts.abortAfterMs,
+    maxAgeMs: opts.maxAgeMs,
+    storeInCache: opts.storeInCache,
   };
   const retryDelayMs = opts.retryDelayMs ?? 2_000;
   const warnings: string[] = [];

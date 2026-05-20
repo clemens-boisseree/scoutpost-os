@@ -4,11 +4,11 @@
  * Called internally by execute-scout. Must complete within ~50s. Flow:
  *   1. Load scout.
  *   2. Create (or reuse) a scout_runs row with status='running'.
- *   3. Firecrawl change-tracking scrape using per-scout tag.
+ *   3. Scrape the page and compare either the local canonical hash baseline
+ *      or, for legacy scouts only, Firecrawl changeTracking.
  *   4. If change_status === "same": mark run success, reset failures, return.
- *   5. Else: store raw_capture, optionally extract units via Gemini (when
- *      scout.criteria is set), dedup each unit via check_unit_dedup RPC,
- *      insert non-dupes into information_units, mark run success.
+ *   5. Else: store raw_capture, extract units, dedup each unit through
+ *      canonical unit upsert, insert non-dupes, mark run success.
  *   5b. Phase B: if index extraction flags isListingPage, extract same-host
  *       subpage links, scrape each sequentially, extract units per subpage.
  *       Single-hop only — nested listings are skipped. CAP = 10.
@@ -62,6 +62,12 @@ import {
   sha256Hex,
   upsertCanonicalUnit,
 } from "../_shared/unit_dedup.ts";
+import {
+  WEB_CANONICALIZER_VERSION,
+  WEB_SCOUT_FRESH_SCRAPE_OPTIONS,
+  webCanonicalHash,
+  webCanonicalHashEnabled,
+} from "../_shared/web_content_canonical.ts";
 import {
   CREDIT_COSTS,
   decrementOrThrow,
@@ -429,12 +435,9 @@ async function runPipeline(
 ): Promise<PipelineResult> {
   await markRunStage(svc, runId, "scrape");
   // 3. Scrape via the provider recorded for this scout:
-  //      - "firecrawl_plain": plain scrape + SHA-256 hash compare to prior
-  //        raw_captures row. Used when double-probe flagged the URL as
-  //        ghost-baseline.
-  //      - "firecrawl" or null: changeTracking scrape with per-scout tag.
-  //        On Firecrawl failure, fall back to plain + hash so a transient
-  //        error doesn't look like "new content" every run.
+  //      - "firecrawl_plain": fresh scrape + local canonical hash compare.
+  //      - "firecrawl" or null: legacy changeTracking scrape. On a successful
+  //        run, migrate to a local canonical baseline.
   const tag = `scout-${scout.id}`.slice(0, 128);
 
   let markdown: string;
@@ -451,6 +454,7 @@ async function runPipeline(
       url: scout.url,
       timeoutMs: PRIMARY_SCRAPE_TIMEOUT_MS,
       abortAfterMs: PRIMARY_SCRAPE_ABORT_AFTER_MS,
+      ...WEB_SCOUT_FRESH_SCRAPE_OPTIONS,
     });
     markdown = plain.markdown ?? "";
     rawHtml = plain.rawHtml ?? null;
@@ -486,6 +490,7 @@ async function runPipeline(
         url: scout.url,
         timeoutMs: PRIMARY_SCRAPE_TIMEOUT_MS,
         abortAfterMs: PRIMARY_SCRAPE_ABORT_AFTER_MS,
+        ...WEB_SCOUT_FRESH_SCRAPE_OPTIONS,
       });
       markdown = plain.markdown ?? "";
       rawHtml = plain.rawHtml ?? null;
@@ -511,6 +516,22 @@ async function runPipeline(
   }
 
   if (changeStatus === "same") {
+    if (
+      scout.provider !== "firecrawl_plain" &&
+      webCanonicalHashEnabled() &&
+      markdown.trim()
+    ) {
+      const contentHash = await sha256Hex(markdown);
+      await insertRawCapture(svc, {
+        scout,
+        runId,
+        sourceUrl: scout.url,
+        sourceDomain: deriveSourceDomain(scout.url),
+        markdown,
+        contentHash,
+      });
+      await markScoutCanonicalProvider(svc, scout.id);
+    }
     return {
       change_status: "same",
       articles_count: 0,
@@ -716,6 +737,10 @@ async function runPipeline(
   const summary = insertedStatements.length === 1
     ? insertedStatements[0]
     : insertedStatements.map((s) => `- ${s}`).join("\n");
+
+  if (scout.provider !== "firecrawl_plain" && webCanonicalHashEnabled()) {
+    await markScoutCanonicalProvider(svc, scout.id);
+  }
 
   return {
     change_status: scrape.change_status,
@@ -1035,6 +1060,7 @@ async function runPhaseB(
       const subScrape = await firecrawlScrape(subUrl, {
         timeoutMs: SUBPAGE_SCRAPE_TIMEOUT_MS,
         abortAfterMs: SUBPAGE_SCRAPE_ABORT_AFTER_MS,
+        ...WEB_SCOUT_FRESH_SCRAPE_OPTIONS,
       });
 
       if (!subScrape.markdown?.trim()) {
@@ -1212,6 +1238,8 @@ async function insertRawCapture(
       source_domain: input.sourceDomain,
       content_md: input.markdown,
       content_sha256: input.contentHash,
+      canonical_content_sha256: await webCanonicalHash(input.markdown),
+      canonicalizer_version: WEB_CANONICALIZER_VERSION,
       token_count: Math.ceil(input.markdown.length / 4),
       captured_at: new Date().toISOString(),
       expires_at: rawCaptureExpiresAt(),
@@ -1220,6 +1248,17 @@ async function insertRawCapture(
     .single();
   if (error) throw new Error(error.message);
   return capture.id as string;
+}
+
+async function markScoutCanonicalProvider(
+  svc: SupabaseClient,
+  scoutId: string,
+): Promise<void> {
+  const { error } = await svc
+    .from("scouts")
+    .update({ provider: "firecrawl_plain" })
+    .eq("id", scoutId);
+  if (error) throw new Error(error.message);
 }
 
 /**
@@ -1377,10 +1416,13 @@ async function insertExtractedUnits(
 }
 
 /**
- * Compute SHA-256 of the newly scraped markdown and compare against the
- * most recent raw_captures row for this scout. Port of prod
- * ExecutionDeduplicationService.get_latest_content_hash + hash-based
- * change detection. Used only on the firecrawl_plain path.
+ * Compute the versioned canonical hash of newly scraped markdown and compare it
+ * against the latest usable raw_captures baseline for this scout.
+ *
+ * A raw_capture only advances the baseline when it was created at schedule-time
+ * with no run id, or when its scout_run completed successfully. This prevents a
+ * provider/LLM failure after raw capture insertion from causing the next run to
+ * skip the same page content.
  */
 async function hashChangeStatus(
   svc: SupabaseClient,
@@ -1388,16 +1430,85 @@ async function hashChangeStatus(
   markdown: string,
 ): Promise<"new" | "same" | "changed"> {
   if (!markdown.trim()) return "new";
-  const hash = await sha256Hex(markdown);
+  const rawHash = await sha256Hex(markdown);
+  const canonicalHash = await webCanonicalHash(markdown);
   const { data, error } = await svc
     .from("raw_captures")
-    .select("content_sha256")
+    .select(
+      "id, scout_run_id, content_sha256, content_md, canonical_content_sha256, canonicalizer_version",
+    )
     .eq("scout_id", scoutId)
     .order("captured_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !data) return "new";
-  if (data.content_sha256 === hash) return "same";
+    .limit(50);
+  if (error || !data?.length) return "new";
+
+  const captures = data as Array<{
+    id: string;
+    scout_run_id: string | null;
+    content_sha256: string | null;
+    content_md: string | null;
+    canonical_content_sha256: string | null;
+    canonicalizer_version: string | null;
+  }>;
+  const runIds = captures
+    .map((capture) => capture.scout_run_id)
+    .filter((runId): runId is string => typeof runId === "string" && !!runId);
+  let successfulRunIds = new Set<string>();
+  if (runIds.length > 0) {
+    const { data: runs, error: runsError } = await svc
+      .from("scout_runs")
+      .select("id, status")
+      .in("id", [...new Set(runIds)]);
+    if (!runsError && runs) {
+      successfulRunIds = new Set(
+        (runs as Array<{ id: string; status: string | null }>)
+          .filter((run) => run.status === "success")
+          .map((run) => run.id),
+      );
+    } else if (runsError) {
+      logEvent({
+        level: "warn",
+        fn: "scout-web-execute",
+        event: "baseline_run_status_lookup_failed",
+        scout_id: scoutId,
+        msg: runsError.message,
+      });
+    }
+  }
+
+  const latestBaseline = captures.find((capture) =>
+    !capture.scout_run_id || successfulRunIds.has(capture.scout_run_id)
+  );
+  if (!latestBaseline) return "new";
+
+  if (
+    latestBaseline.canonicalizer_version === WEB_CANONICALIZER_VERSION &&
+    latestBaseline.canonical_content_sha256
+  ) {
+    return latestBaseline.canonical_content_sha256 === canonicalHash
+      ? "same"
+      : "changed";
+  }
+
+  if (
+    typeof latestBaseline.content_md === "string" &&
+    latestBaseline.content_md.trim()
+  ) {
+    const priorCanonicalHash = await webCanonicalHash(
+      latestBaseline.content_md,
+    );
+    await svc
+      .from("raw_captures")
+      .update({
+        canonical_content_sha256: priorCanonicalHash,
+        canonicalizer_version: WEB_CANONICALIZER_VERSION,
+      })
+      .eq("id", latestBaseline.id);
+    return priorCanonicalHash === canonicalHash ? "same" : "changed";
+  }
+
+  // Legacy fallback for old captures that have only the raw hash.
+  if (latestBaseline.content_sha256 === rawHash) return "same";
   return "changed";
 }
 

@@ -50,6 +50,10 @@ import { geminiExtract } from "../_shared/gemini.ts";
 import { compressContext } from "../_shared/taco_compress.ts";
 import { ensureWebBaseline } from "../_shared/web_scout_baseline.ts";
 import {
+  WEB_SCOUT_FRESH_SCRAPE_OPTIONS,
+  webCanonicalHashEnabled,
+} from "../_shared/web_content_canonical.ts";
+import {
   formatSocialBaselinePosts,
   scanSocialBaseline,
 } from "../_shared/social_baseline.ts";
@@ -1220,20 +1224,25 @@ async function testScout(
   }
   const { url, criteria } = parsed.data;
 
-  // Run preview scrape AND double-probe baseline verification in parallel,
-  // mirroring prod: the probe decides whether this scout can use Firecrawl's
-  // changeTracking or needs plain + hash dedup at run-time.
+  // Canonical hash mode owns baselines locally; no Firecrawl changeTracking
+  // probe is needed for new Page Scouts.
   const tag = `${user.id}#preview-${crypto.randomUUID().slice(0, 8)}`.slice(
     0,
     128,
   );
-  const probePromise = doubleProbe(url, tag).catch(
-    (): "firecrawl" | "firecrawl_plain" => "firecrawl_plain",
-  );
+  const canonicalHashMode = webCanonicalHashEnabled();
+  const probePromise = canonicalHashMode
+    ? Promise.resolve<"firecrawl" | "firecrawl_plain">("firecrawl_plain")
+    : doubleProbe(url, tag).catch(
+      (): "firecrawl" | "firecrawl_plain" => "firecrawl_plain",
+    );
 
   let scraped;
   try {
-    scraped = await firecrawlScrape(url);
+    scraped = await firecrawlScrape(
+      url,
+      canonicalHashMode ? WEB_SCOUT_FRESH_SCRAPE_OPTIONS : {},
+    );
   } catch (e) {
     logEvent({
       level: "warn",
@@ -1247,7 +1256,7 @@ async function testScout(
       summary: "",
       scraper_status: false,
       criteria_status: false,
-      provider: "firecrawl",
+      provider: canonicalHashMode ? "firecrawl_plain" : "firecrawl",
     });
   }
   const provider = await probePromise;
@@ -1285,7 +1294,7 @@ async function testScout(
       summary: "Page scraped successfully (summary unavailable).",
       scraper_status: true,
       criteria_status: false,
-      provider: "firecrawl",
+      provider,
     });
   }
 

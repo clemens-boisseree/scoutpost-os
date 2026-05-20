@@ -10,33 +10,41 @@ Page Scouts monitor specific URLs for content changes. Users choose between two 
 - **Any Change**: Notifies on any content change (criteria is null, skips LLM analysis)
 - **Specific Criteria**: Notifies only when changes match user-defined criteria (LLM-analyzed)
 
-Uses Firecrawl's `changeTracking` format with per-scout baselines via the `tag` parameter.
+Uses Firecrawl `/scrape` as the fetch/render provider, but Page Scout change
+detection is owned locally by Scoutpost: fresh markdown is canonicalized,
+version-hashed, and compared against the latest `raw_captures` baseline.
+Firecrawl `changeTracking` remains a legacy migration path for older scouts.
 
-## Provider Detection
+## Change Detection Provider
 
-Some websites fail Firecrawl's `changeTracking` format (ERR_TIMED_OUT) but work fine with plain scrape. The provider is detected once during the **test step** and persisted for all subsequent runs.
+The live Page Scout provider values are:
 
 | Provider | Method | Change Detection | When Used |
 |----------|--------|------------------|-----------|
-| `firecrawl` | changeTracking format | Firecrawl baseline diff | Default — changeTracking works for this URL |
-| `firecrawl_plain` | Plain markdown scrape | SHA-256 content hash | Fallback — changeTracking times out or fails |
+| `firecrawl_plain` | Fresh Firecrawl scrape (`maxAge: 0`, `storeInCache: false`) | Local canonical markdown SHA-256 | Default for new Page Scouts |
+| `firecrawl` | Firecrawl `changeTracking` format | Firecrawl remote baseline diff | Legacy scouts during migration |
 
-**How it works (double-probe):**
-1. Scout name must be provided before testing (required to build the real tag)
-2. User clicks "Test" → backend runs `double_probe()` **concurrently** with the preview scrape
-3. Double-probe sends **two** sequential changeTracking requests using the real `{user_id}#{scraper_name}` tag:
-   - Call 1: Establishes a baseline (or times out)
-   - Call 2: Checks both `previousScrapeAt` and `changeStatus`:
-     - Has timestamp + `changeStatus` is `same`/`changed` → baseline verified with content
-     - Has timestamp + `changeStatus` is `new`/null → ghost baseline (timestamp stored, content discarded)
-     - No timestamp → baseline dropped entirely
-4. If baseline verified → provider = `firecrawl`; if ghost/dropped/timeout → `firecrawl_plain`
-5. Provider is returned in the test response, passed through the scheduling modal, stored in the SCRAPER# record, and included in the EventBridge input template
-6. On every scheduled run, `execute()` uses the persisted provider — skipping the doomed 60s changeTracking attempt for `firecrawl_plain` URLs
+The `firecrawl_plain` name is historical. It now means "Firecrawl scrape
+provider + Scoutpost local hash detector" for Page Scouts.
 
-**Why double-probe:** Firecrawl can return `changeStatus: "new"` (HTTP 200) but silently drop the baseline. A single probe cannot distinguish "baseline stored" from "baseline dropped". The second call's `previousScrapeAt` confirms timestamp storage, and `changeStatus` confirms content storage. Both are needed — a "ghost baseline" has a timestamp but no content, causing every future run to report `changeStatus: "new"`. See `double-probe.md` for full specification.
+### Canonical Hashing
 
-**Backwards compatibility:** Existing scouts without a `provider` field use the original runtime fallback behavior (try changeTracking, fall back to plain on failure).
+Raw Firecrawl markdown is not hashed directly for change detection. The Page
+Scout canonicalizer removes known scrape-noise before hashing:
+
+- image markdown and image CDN URL churn
+- placeholder/static asset URL churn
+- relative timestamps such as "34 mins ago"
+- whitespace-only differences
+
+It preserves ordinary text, headings, publication dates, and article links. The
+canonicalizer is versioned (`web-md-v1`) and stored alongside each baseline in
+`raw_captures.canonicalizer_version`.
+
+Firecrawl `changeTracking` is still supported for existing `provider =
+"firecrawl"` scouts. On a successful run, those scouts write a local canonical
+baseline and switch to `firecrawl_plain`. Failed Firecrawl changeTracking runs
+do not silently migrate.
 
 ## Execution Pipeline
 
@@ -44,17 +52,16 @@ Some websites fail Firecrawl's `changeTracking` format (ERR_TIMED_OUT) but work 
 ┌─────────────────────────────────────────────────────────────────┐
 │                    PAGE SCOUT EXECUTION                          │
 │                                                                 │
-│  Trigger: EventBridge → Lambda → POST /api/scouts/execute       │
+│  Trigger: pg_cron → execute-scout EF → scout-web-execute        │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Stage 1: Change Detection                                      │
 │  ├─ If provider = "firecrawl_plain":                            │
-│  │   ├─ Plain scrape (no changeTracking)                        │
-│  │   └─ SHA-256 hash comparison for change detection            │
-│  ├─ If provider = "firecrawl" (or unset):                       │
-│  │   ├─ Scrape URL with changeTracking format                   │
-│  │   ├─ Uses scout-specific `tag` for per-scout baseline        │
-│  │   └─ Falls back to plain if changeTracking fails             │
+│  │   ├─ Fresh Firecrawl scrape (cache bypassed)                 │
+│  │   └─ Canonical SHA-256 comparison against raw_captures       │
+│  ├─ If provider = "firecrawl":                                  │
+│  │   ├─ Legacy Firecrawl changeTracking scrape                  │
+│  │   └─ On success, write local canonical baseline + migrate    │
 │  └─ Returns: "new" | "changed" | "same"                         │
 │           │                                                     │
 │           │ If "same" → return early (no notification)          │
@@ -68,18 +75,16 @@ Some websites fail Firecrawl's `changeTracking` format (ERR_TIMED_OUT) but work 
 │  │       │                                                      │
 │  │       │ If !matches → return early (no notification)         │
 │           ▼                                                     │
-│  Stage 3: Deduplication (EXEC# records)                         │
-│  ├─ Generate embedding for summary                              │
-│  ├─ Compare against last 20 EXEC# records                       │
-│  └─ Threshold: 0.85 cosine similarity                           │
-│           │                                                     │
-│           │ If duplicate → return early (no notification)       │
+│  Stage 3: Unit Deduplication                                    │
+│  ├─ Extract atomic units                                        │
+│  ├─ Upsert through canonical unit dedup                         │
+│  └─ Merge duplicates instead of inserting repeated facts        │
 │           ▼                                                     │
 │  Stage 4: Notification                                          │
-│  ├─ Store EXEC# record                                          │
-│  ├─ Extract atomic units (if location/topic set)                │
+│  ├─ Store scout_run diagnostics                                 │
+│  ├─ Store raw_captures + information_units                      │
 │  ├─ Send localized email (user's preferred_language)            │
-│  └─ Decrement credits via DynamoDB                                 │
+│  └─ Decrement credits via Supabase RPC                          │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -88,27 +93,34 @@ Some websites fail Firecrawl's `changeTracking` format (ERR_TIMED_OUT) but work 
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `scout_service.py` | `backend/app/services/` | Main execution logic, Firecrawl integration, `double_probe()` |
-| `scouts.py` | `backend/app/routers/` | `/api/scouts/execute` endpoint |
-| `execution_deduplication.py` | `backend/app/services/` | EXEC# record management |
-| `notification_service.py` | `backend/app/services/` | Localized email notifications |
-| `email_translations.py` | `backend/app/services/` | Email strings (12 languages) |
+| `scout-web-execute/index.ts` | `supabase/functions/` | Main scheduled/run-now Page Scout pipeline |
+| `scouts/index.ts` | `supabase/functions/` | Scout CRUD, preview/test, run, pause/resume |
+| `_shared/firecrawl.ts` | `supabase/functions/` | Firecrawl scrape wrapper |
+| `_shared/web_content_canonical.ts` | `supabase/functions/` | Versioned markdown canonicalizer |
+| `_shared/web_scout_baseline.ts` | `supabase/functions/` | Schedule-time baseline establishment |
+| `_shared/atomic_extract.ts` | `supabase/functions/` | Atomic unit extraction |
+| `_shared/notifications.ts` | `supabase/functions/` | Localized email notifications |
 
 ## Deduplication Mechanisms
 
-### Layer 1: Firecrawl changeTracking
-- Per-scout baseline via `tag` parameter (`{user_id}#{scraper_name}`)
-- Prevents re-analyzing unchanged content
-- Returns "same" if no changes detected
+### Layer 1: Local canonical hash baseline
+- Fresh Firecrawl scrape bypasses the default provider cache for Page Scout
+  change detection.
+- Canonical markdown hash is compared with the latest `raw_captures` baseline
+  for the same canonicalizer version.
+- Raw markdown hash is still stored for diagnostics and content dedup context.
 
-### Layer 2: EXEC# Records
-- Embedding-based similarity (cosine >= 0.85 = duplicate)
-- Compares against last 20 executions for this scout
-- Prevents duplicate notifications for semantically similar findings
+### Layer 2: Canonical unit deduplication
+- Extracted facts are upserted through the canonical unit path.
+- Duplicate source/fact occurrences merge into existing units instead of
+  creating repeated inbox items.
+- Within-run embedding dedup drops near-duplicate extracted statements before
+  unit upsert.
 
 ### Runtime Guardrails
 
-- Page Scout Firecrawl calls are client-side bounded; change-tracking and plain scrapes abort if Firecrawl stalls.
+- Page Scout Firecrawl calls are client-side bounded; fresh scrapes abort if
+  Firecrawl stalls.
 - Gemini extraction and embedding calls are also bounded so a provider stall cannot leave the run row in `running` indefinitely.
 - Listing-page Phase B subpage-follow runs under a total wall-clock budget and per-subpage scrape cap instead of unbounded sequential fetches.
 
@@ -116,13 +128,16 @@ Some websites fail Firecrawl's `changeTracking` format (ERR_TIMED_OUT) but work 
 
 | Mode | Baseline | Notifications | Credits |
 |------|----------|---------------|---------|
-| **Preview** (Test button) | `content_hash` computed; `firecrawl` baseline confirmed via double-probe | Never sent | Not charged |
-| **Scheduled** | Server establishes baseline at scout creation/scheduling | Sent if criteria match on later changes | Charged on runs |
+| **Preview** (Test button) | Fresh scrape + summary; no baseline persisted | Never sent | Not charged |
+| **Scheduled** | Server establishes local canonical baseline at scout creation/scheduling | Sent if criteria match on later changes | Charged on runs |
 | **Run Now** (Manual) | Uses the saved creation-time baseline; never bootstraps a missing baseline | Sent if criteria match | Charged |
 
 ## Schedule-Time Baseline
 
-When the user schedules a Page Scout, the server establishes the baseline before the schedule is enabled. For `firecrawl` scouts this verifies the changeTracking tag with a double-probe; for `firecrawl_plain` scouts this stores the current page hash in `raw_captures`. Run Now does not create the first baseline, because that would make the first manual run look like a successful no-op while silently changing future alerts.
+When the user schedules a Page Scout, the server establishes the local
+canonical baseline before the schedule is enabled. Run Now does not create the
+first baseline, because that would make the first manual run look like a
+successful no-op while silently changing future alerts.
 
 If a listing/index page changes and Phase B follows matching subpages, the configured scout URL remains the index URL, but each extracted unit and its raw capture are attributed to the exact article/subpage URL that produced the fact.
 
@@ -132,13 +147,19 @@ Page Scout uses the shared `_shared/atomic_extract.ts::sourcePublishedDate` help
 
 ## Database Records
 
-### EXEC# Records (Execution History)
-```
-PK: user_xxx
-SK: EXEC#{scout_name}#{timestamp_ms}#{exec_id}
-Fields: status, scout_type, summary_text, summary_embedding_compressed, is_duplicate
-TTL: 90 days
-```
+### `raw_captures`
+
+Stores the scraped markdown used for baseline comparison and source
+traceability. Page Scout rows include:
+
+- `content_sha256` — raw markdown hash
+- `canonical_content_sha256` — versioned canonical markdown hash
+- `canonicalizer_version` — e.g. `web-md-v1`
+- `expires_at` — raw capture retention cutoff
+
+### `scout_runs`
+
+Stores run lifecycle, stage, notification, and diagnostic fields.
 
 ## Credit Cost
 
@@ -150,4 +171,4 @@ TTL: 90 days
 
 ## Related Docs
 
-- `docs/architecture/records-and-deduplication.md` - DynamoDB record types
+- `docs/specs/web-scout-canonical-hash-change-detection.md`

@@ -372,12 +372,11 @@
 
 					<h3 id="scout-page">Page Scout</h3>
 					<p>
-						Point it at any URL. Uses Firecrawl <code>changeTracking</code> with a per-scout tag so
-						each scout has its own baseline — you can track ten variants of the same page without
-						interference. Only real content changes fire notifications. Optional topic filter lets
-						AI skip changes that don't match your criteria. Scheduling establishes a baseline only;
-						the inbox gets units later when the page changes and those changes survive extraction +
-						dedup.
+						Point it at any URL. Scoutpost fetches a fresh page snapshot, canonicalizes the
+						markdown, and compares it with that scout's stored baseline. Only meaningful content
+						changes fire notifications. Optional topic filter lets AI skip changes that don't match
+						your criteria. Scheduling establishes a baseline only; the inbox gets units later when
+						the page changes and those changes survive extraction + dedup.
 					</p>
 
 					<h3 id="scout-beat">Beat Scout</h3>

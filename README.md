@@ -23,10 +23,6 @@ Scouts run on schedules and send email notifications when criteria are met.
 - **AI**: Gemini 2.5 Flash-Lite (default) + OpenRouter (fallback) + Firecrawl
 - **Hosting**: Render (Docker) for the FastAPI service; Supabase for EFs + DB
 
-> Pre-cutover (now historical): scout scheduling lived on AWS Lambda +
-> EventBridge with DynamoDB. The infra is being torn down — see
-> `CUTOVER-DAY-1-VERIFICATION.md` for the punch list.
-
 ## Quick Start
 
 ### Prerequisites

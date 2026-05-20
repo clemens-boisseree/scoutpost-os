@@ -45,7 +45,7 @@ Auth: Bearer JWT (Supabase auth) **or** Bearer `cj_…` API key plus
 | `scout-beat-execute` | Beat-mode scout executor | Live (cron) |
 | `scout-health-monitor` | Periodic scout health rollup | Live (cron) |
 | `scout-templates` | Scout templates catalog | Live |
-| `scout-web-execute` | Page Scout executor (Firecrawl change tracking) | Live (cron) |
+| `scout-web-execute` | Page Scout executor (fresh scrape + local canonical hash) | Live (cron) |
 | `scouts` | Scout CRUD + run/pause/resume + last-run | Live |
 | `social-kickoff` | Social Scout — fire Apify run | Live (cron) |
 | `social-test` | Social Scout — preview / baseline scan | Live |

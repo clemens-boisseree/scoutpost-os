@@ -5,8 +5,8 @@ import {
 
 import { ApiError } from "./errors.ts";
 import {
-  isTransientFirecrawlError,
   firecrawlScrape,
+  isTransientFirecrawlError,
   scrapePrimaryPageResilient,
   type ScrapeResult,
 } from "./firecrawl.ts";
@@ -63,6 +63,37 @@ Deno.test("firecrawlScrape preserves metadata for publication-date fallback", as
 
     assertEquals(result.metadata?.publishedTime, "2026-04-30T12:00:00Z");
     assertEquals(result.source_url, "https://example.com/story");
+  } finally {
+    globalThis.fetch = originalFetch;
+    Deno.env.delete("FIRECRAWL_API_KEY");
+  }
+});
+
+Deno.test("firecrawlScrape passes cache controls only when supplied", async () => {
+  const originalFetch = globalThis.fetch;
+  const bodies: Record<string, unknown>[] = [];
+  try {
+    globalThis.fetch = ((_input, init) => {
+      bodies.push(JSON.parse(String((init as RequestInit)?.body ?? "{}")));
+      return Promise.resolve(
+        new Response(JSON.stringify({ data: { markdown: "body" } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }) as typeof fetch;
+    Deno.env.set("FIRECRAWL_API_KEY", "fc-test");
+
+    await firecrawlScrape("https://example.com/default");
+    await firecrawlScrape("https://example.com/fresh", {
+      maxAgeMs: 0,
+      storeInCache: false,
+    });
+
+    assertEquals("maxAge" in bodies[0], false);
+    assertEquals("storeInCache" in bodies[0], false);
+    assertEquals(bodies[1].maxAge, 0);
+    assertEquals(bodies[1].storeInCache, false);
   } finally {
     globalThis.fetch = originalFetch;
     Deno.env.delete("FIRECRAWL_API_KEY");

@@ -17,10 +17,8 @@ This directory contains detailed architecture and feature documentation for coJo
 docs/
 ├── CLAUDE.md                              # This file
 ├── architecture/                          # Shared / SaaS-specific
-│   ├── aws-architecture.md               # SaaS: DynamoDB, EventBridge, Lambda
 │   ├── developer-guide.md                 # Local setup, extending scouts, contributing
-│   ├── fastapi-endpoints.md               # All REST endpoints with examples
-│   └── records-and-deduplication.md       # DynamoDB record types, dedup layers
+│   └── fastapi-endpoints.md               # All REST endpoints with examples
 ├── features/                              # What each feature does
 │   ├── civic.md                           # Civic Scout: council monitoring, promises (incl. design ref)
 │   ├── beat.md                           # Beat Scout (type `beat`)
@@ -76,7 +74,7 @@ docs/
 ## Key Documentation by Topic
 
 ### Scout System
-- **Page Scout** (type `web`): `features/web-scouts.md` - Firecrawl changeTracking, per-scout baselines
+- **Page Scout** (type `web`): `features/web-scouts.md` - fresh Firecrawl scrape + local canonical hash baselines
 - **Beat Scout** (type `beat`): `features/beat.md` - Multi-language search, AI filtering
 - **Social Scout** (type `social`): `features/social.md` - Social media monitoring, Apify scraping
 - **Civic Scout** (type `civic`): `features/civic.md` - Council monitoring, promise extraction, design reference
@@ -87,8 +85,6 @@ docs/
 
 ### Architecture
 - **API Endpoints**: `architecture/fastapi-endpoints.md` - All REST endpoints
-- **AWS Architecture**: `architecture/aws-architecture.md` - DynamoDB, EventBridge, Lambda (SaaS-only)
-- **Records & Dedup**: `architecture/records-and-deduplication.md` - DynamoDB record types, dedup layers
 - **Developer Guide**: `architecture/developer-guide.md` - Local setup, extending scouts, contributing
 
 ### OSS / Self-Hosted

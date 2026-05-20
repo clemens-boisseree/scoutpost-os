@@ -309,4 +309,5 @@ supabase functions deploy beat-search --project-ref <project-ref> --no-verify-jw
 
 ## Related Docs
 
-- `docs/architecture/records-and-deduplication.md` - DynamoDB record types and dedup layers
+- `docs/supabase/scouts-runs.md` - scout scheduling and run records
+- `docs/supabase/units-entities.md` - information unit deduplication

@@ -3,6 +3,12 @@ import { ValidationError } from "./errors.ts";
 import { doubleProbe, firecrawlScrape } from "./firecrawl.ts";
 import { logEvent } from "./log.ts";
 import { deriveSourceDomain, sha256Hex } from "./unit_dedup.ts";
+import {
+  WEB_CANONICALIZER_VERSION,
+  WEB_SCOUT_FRESH_SCRAPE_OPTIONS,
+  webCanonicalHash,
+  webCanonicalHashEnabled,
+} from "./web_content_canonical.ts";
 
 export interface WebBaselineScout {
   id: string;
@@ -59,22 +65,28 @@ export async function establishWebBaseline(
     throw new ValidationError("web scouts require a url before scheduling");
   }
 
-  if (scout.provider === "firecrawl_plain") {
-    const scrape = await deps.firecrawlScrape(scout.url);
+  if (webCanonicalHashEnabled() || scout.provider === "firecrawl_plain") {
+    const scrape = await deps.firecrawlScrape(
+      scout.url,
+      WEB_SCOUT_FRESH_SCRAPE_OPTIONS,
+    );
     const markdown = scrape.markdown?.trim() ?? "";
     if (!markdown) {
       throw new ValidationError(
         "unable to establish page baseline from empty content",
       );
     }
+    const contentMd = scrape.markdown;
     const { error } = await svc.from("raw_captures").insert({
       user_id: scout.user_id,
       scout_id: scout.id,
       source_url: scout.url,
       source_domain: deriveSourceDomain(scout.url),
-      content_md: scrape.markdown,
-      content_sha256: await sha256Hex(scrape.markdown),
-      token_count: Math.ceil(scrape.markdown.length / 4),
+      content_md: contentMd,
+      content_sha256: await sha256Hex(contentMd),
+      canonical_content_sha256: await webCanonicalHash(contentMd),
+      canonicalizer_version: WEB_CANONICALIZER_VERSION,
+      token_count: Math.ceil(contentMd.length / 4),
       captured_at: deps.now(),
       expires_at: rawCaptureExpiresAt(deps.now()),
     });
@@ -106,6 +118,8 @@ export async function establishWebBaseline(
     source_domain: deriveSourceDomain(scout.url),
     content_md: scrape.markdown,
     content_sha256: await sha256Hex(scrape.markdown),
+    canonical_content_sha256: await webCanonicalHash(scrape.markdown),
+    canonicalizer_version: WEB_CANONICALIZER_VERSION,
     token_count: Math.ceil(scrape.markdown.length / 4),
     captured_at: deps.now(),
     expires_at: rawCaptureExpiresAt(deps.now()),

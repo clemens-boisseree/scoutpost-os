@@ -323,4 +323,5 @@ Tests profile validation, Apify scraping, post normalization, ID-based diffing, 
 
 ## Related Docs
 
-- `docs/architecture/records-and-deduplication.md` - DynamoDB record types and dedup layers
+- `docs/supabase/social-apify.md` - Social Scout queueing, callback, snapshots, and reconciliation
+- `docs/supabase/scouts-runs.md` - scout scheduling and run records
