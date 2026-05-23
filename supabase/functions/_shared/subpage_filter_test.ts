@@ -208,6 +208,10 @@ Deno.test("isLikelyArticleUrl recognizes only concrete article route shapes", ()
     true,
   );
   assertEquals(
+    isLikelyArticleUrl("https://huggingface.co/papers/2605.22355"),
+    true,
+  );
+  assertEquals(
     isLikelyArticleUrl(
       "https://www.engadinerpost.ch/news/2026/05/06/Getruebte-Freude-im-Bildungshaus",
     ),
@@ -226,11 +230,23 @@ Deno.test("hasDeterministicListingSignal requires at least three article candida
     "https://example.ch/a/123456",
     "https://example.ch/a/story.html",
   ];
+  const paperCandidates = [
+    "https://huggingface.co/papers/2605.22355",
+    "https://huggingface.co/papers/2605.22109",
+    "https://huggingface.co/papers/2605.21467",
+  ];
   assertEquals(
     hasDeterministicListingSignal(listing, candidates.slice(0, 2)),
     false,
   );
   assertEquals(hasDeterministicListingSignal(listing, candidates), true);
+  assertEquals(
+    hasDeterministicListingSignal(
+      "https://huggingface.co/papers",
+      paperCandidates,
+    ),
+    true,
+  );
   assertEquals(
     hasDeterministicListingSignal(
       "https://example.ch/a/story-ld.1",

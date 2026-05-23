@@ -63,6 +63,7 @@ export function isLikelyArticleUrl(url: string): boolean {
   if (segments.some((segment) => /^ld\.\d+$/i.test(segment))) return true;
   if (/(^|-)ld\.\d+$/i.test(last)) return true;
   if (/\.(html?|php|aspx)$/i.test(last)) return true;
+  if (/^\d{4,5}\.\d{4,6}(v\d+)?$/i.test(last)) return true;
   if (/^\d{5,}$/.test(last)) return true;
   if (/[a-z][a-z0-9-]*-\d{5,}$/i.test(last)) return true;
   if (hasLongArticleSlug(last)) return true;
