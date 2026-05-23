@@ -10,6 +10,21 @@ type ScoutType = "web" | "beat" | "civic" | "social";
 type Platform = "instagram" | "x" | "facebook" | "tiktok";
 type CaseKind = ScoutType | "actors";
 
+function envAny(...names: string[]): string | null {
+  for (const name of names) {
+    const value = Deno.env.get(name);
+    if (value) return value;
+  }
+  return null;
+}
+
+function envFlag(...names: string[]): boolean {
+  return names.some((name) => {
+    const value = Deno.env.get(name)?.trim().toLowerCase();
+    return value === "1" || value === "true";
+  });
+}
+
 interface Scout {
   id: string;
   name: string;
@@ -70,16 +85,25 @@ const POLL_MS = 10_000;
 const actorCases: Array<{ platform: Platform; handle: string }> = [
   {
     platform: "instagram",
-    handle: Deno.env.get("COJO_BENCH_INSTAGRAM_HANDLE") ?? "natgeo",
+    handle:
+      envAny("SCOUT_BENCH_INSTAGRAM_HANDLE", "COJO_BENCH_INSTAGRAM_HANDLE") ??
+        "natgeo",
   },
-  { platform: "x", handle: Deno.env.get("COJO_BENCH_X_HANDLE") ?? "SadiqKhan" },
+  {
+    platform: "x",
+    handle: envAny("SCOUT_BENCH_X_HANDLE", "COJO_BENCH_X_HANDLE") ??
+      "SadiqKhan",
+  },
   {
     platform: "facebook",
-    handle: Deno.env.get("COJO_BENCH_FACEBOOK_HANDLE") ?? "nasa",
+    handle:
+      envAny("SCOUT_BENCH_FACEBOOK_HANDLE", "COJO_BENCH_FACEBOOK_HANDLE") ??
+        "nasa",
   },
   {
     platform: "tiktok",
-    handle: Deno.env.get("COJO_BENCH_TIKTOK_HANDLE") ?? "natgeo",
+    handle: envAny("SCOUT_BENCH_TIKTOK_HANDLE", "COJO_BENCH_TIKTOK_HANDLE") ??
+      "natgeo",
   },
 ];
 
@@ -89,9 +113,10 @@ if (args.flags.help === true || args.flags.h === true) {
   Deno.exit(0);
 }
 
-if (Deno.env.get("COJO_USER_BENCHMARK") !== "1") {
+if (!envFlag("SCOUT_USER_BENCHMARK", "COJO_USER_BENCHMARK")) {
   throw new Error(
-    "Refusing to mutate a real account. Set COJO_USER_BENCHMARK=1 to run " +
+    "Refusing to mutate a real account. Set SCOUT_USER_BENCHMARK=1 to run " +
+      "(legacy COJO_USER_BENCHMARK=1 is still accepted) " +
       "the deployed user-auth scout benchmark.",
   );
 }
@@ -145,7 +170,7 @@ if (failed.length > 0) {
 
 function usage(): void {
   console.log(`Usage:
-  COJO_USER_BENCHMARK=1 deno run --allow-env --allow-net --allow-read \\
+  SCOUT_USER_BENCHMARK=1 deno run --allow-env --allow-net --allow-read \\
     scripts/benchmark-user-scouts.ts [--types actors,web,beat,civic,social]
 
 Options:

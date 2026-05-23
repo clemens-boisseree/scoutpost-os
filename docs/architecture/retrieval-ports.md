@@ -61,7 +61,7 @@ without re-baselining or changing canonical-unit dedup.
 Live head-to-head comparison is gated and non-mutating:
 
 ```bash
-COJO_LIVE_BENCHMARK=1 COJO_ALLOW_PROD_FIRECRAWL=1 \
+SCOUT_LIVE_BENCHMARK=1 SCOUT_ALLOW_PROD_FIRECRAWL=1 \
   deno run --allow-env --allow-net scripts/exa-vs-firecrawl-coverage.ts
 ```
 

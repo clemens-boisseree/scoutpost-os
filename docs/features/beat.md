@@ -287,7 +287,7 @@ deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts
 deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts --scout-id <existing-beat-scout-uuid>
 deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts --timeout-min 8
 deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts --scenario ai-journalism --timeout-min 10 --verbose
-COJO_LIVE_BENCHMARK=1 COJO_ALLOW_PROD_FIRECRAWL=1 \
+SCOUT_LIVE_BENCHMARK=1 SCOUT_ALLOW_PROD_FIRECRAWL=1 \
   deno run --allow-env --allow-net scripts/exa-vs-firecrawl-coverage.ts
 ```
 

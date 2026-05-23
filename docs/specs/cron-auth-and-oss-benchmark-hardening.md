@@ -28,7 +28,7 @@ Verified locally/remotely during planning:
   - no active scout cron rows still contain `Authorization: Bearer`.
 - Simplify OSS beat benchmark defaults:
   - default to fixture/dry-run or non-live contract smoke,
-  - require explicit `COJO_LIVE_BENCHMARK=1` for live Firecrawl/Gemini paths,
+  - require explicit `SCOUT_LIVE_BENCHMARK=1` for live Firecrawl/Gemini paths,
   - reduce live beat scenarios to 1-2,
   - set attempts to 1,
   - use only the `news` preview category by default,

@@ -7,6 +7,14 @@ import {
 
 type Platform = "instagram" | "x" | "facebook" | "tiktok";
 
+function envAny(...names: string[]): string | null {
+  for (const name of names) {
+    const value = Deno.env.get(name);
+    if (value) return value;
+  }
+  return null;
+}
+
 interface ActorCase {
   platform: Platform;
   handle: string;
@@ -29,16 +37,25 @@ const token = mustEnv("APIFY_API_TOKEN");
 const cases: ActorCase[] = [
   {
     platform: "instagram",
-    handle: Deno.env.get("COJO_BENCH_INSTAGRAM_HANDLE") ?? "natgeo",
+    handle:
+      envAny("SCOUT_BENCH_INSTAGRAM_HANDLE", "COJO_BENCH_INSTAGRAM_HANDLE") ??
+        "natgeo",
   },
-  { platform: "x", handle: Deno.env.get("COJO_BENCH_X_HANDLE") ?? "SadiqKhan" },
+  {
+    platform: "x",
+    handle: envAny("SCOUT_BENCH_X_HANDLE", "COJO_BENCH_X_HANDLE") ??
+      "SadiqKhan",
+  },
   {
     platform: "facebook",
-    handle: Deno.env.get("COJO_BENCH_FACEBOOK_HANDLE") ?? "nasa",
+    handle:
+      envAny("SCOUT_BENCH_FACEBOOK_HANDLE", "COJO_BENCH_FACEBOOK_HANDLE") ??
+        "nasa",
   },
   {
     platform: "tiktok",
-    handle: Deno.env.get("COJO_BENCH_TIKTOK_HANDLE") ?? "natgeo",
+    handle: envAny("SCOUT_BENCH_TIKTOK_HANDLE", "COJO_BENCH_TIKTOK_HANDLE") ??
+      "natgeo",
   },
 ];
 
