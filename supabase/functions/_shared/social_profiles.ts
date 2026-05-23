@@ -1,6 +1,25 @@
 export type SocialPlatform = "instagram" | "x" | "facebook" | "tiktok";
 
 export type ProfileProbeResult = "exists" | "missing" | "uncertain";
+export type SocialAdapterStatus =
+  | "resolved"
+  | "profile_missing"
+  | "probe_uncertain"
+  | "fallback_original";
+
+export interface SocialProfileProbeAttempt {
+  handle: string;
+  url: string;
+  result: ProfileProbeResult;
+}
+
+export interface SocialProfileResolution {
+  input_handle: string;
+  resolved_handle: string;
+  resolved_profile_url: string;
+  adapter_status: SocialAdapterStatus;
+  attempts: SocialProfileProbeAttempt[];
+}
 
 export function normalizeSocialHandle(
   platform: SocialPlatform,
@@ -32,6 +51,84 @@ export function buildSocialProfileUrl(
   }
 }
 
+export function socialProfileCandidates(
+  platform: SocialPlatform,
+  input: string,
+): string[] {
+  const normalized = normalizeSocialHandle(platform, input);
+  if (!normalized) return [];
+  const suffixes = ["", "official", ".org"];
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+  for (const suffix of suffixes) {
+    const candidate = normalizeSocialHandle(platform, `${normalized}${suffix}`);
+    if (candidate && !seen.has(candidate)) {
+      seen.add(candidate);
+      candidates.push(candidate);
+    }
+  }
+  return candidates;
+}
+
+export async function resolveSocialProfile(
+  platform: SocialPlatform,
+  input: string,
+  opts: {
+    probe?: (
+      url: string,
+      handle: string,
+    ) => Promise<ProfileProbeResult>;
+  } = {},
+): Promise<SocialProfileResolution> {
+  const candidates = socialProfileCandidates(platform, input);
+  const fallback = candidates[0] ?? normalizeSocialHandle(platform, input);
+  const attempts: SocialProfileProbeAttempt[] = [];
+  const probe = opts.probe ?? probeProfileUrl;
+
+  for (const handle of candidates) {
+    const url = buildSocialProfileUrl(platform, handle);
+    const result = await probe(url, handle);
+    attempts.push({ handle, url, result });
+    if (result === "exists") {
+      return {
+        input_handle: normalizeSocialHandle(platform, input),
+        resolved_handle: handle,
+        resolved_profile_url: url,
+        adapter_status: "resolved",
+        attempts,
+      };
+    }
+    if (result === "uncertain") break;
+  }
+
+  const fallbackUrl = buildSocialProfileUrl(platform, fallback);
+  const sawMissing = attempts.some((attempt) => attempt.result === "missing");
+  return {
+    input_handle: normalizeSocialHandle(platform, input),
+    resolved_handle: fallback,
+    resolved_profile_url: fallbackUrl,
+    adapter_status: attempts.length === 0
+      ? "fallback_original"
+      : sawMissing && attempts.every((attempt) => attempt.result === "missing")
+      ? "profile_missing"
+      : "probe_uncertain",
+    attempts,
+  };
+}
+
+export function socialProfileResolutionMetadata(
+  resolution: SocialProfileResolution,
+): Record<string, unknown> {
+  return {
+    adapter_status: resolution.adapter_status,
+    profile_handle_input: resolution.input_handle,
+    resolved_profile_handle: resolution.resolved_handle,
+    resolved_profile_url: resolution.resolved_profile_url,
+    profile_resolution_attempts: resolution.attempts,
+    adapter_checked_at: new Date().toISOString(),
+  };
+}
+
 export function classifyProfileProbeStatus(status: number): ProfileProbeResult {
   if (status === 404 || status === 410) return "missing";
   if (status >= 200 && status < 400) return "exists";
@@ -57,6 +154,31 @@ function sanitizeBareHandle(input: string): string {
     .replace(/^@/, "")
     .replace(/^\/+/, "")
     .replace(/\/+$/, "");
+}
+
+async function probeProfileUrl(url: string): Promise<ProfileProbeResult> {
+  if (!url) return "missing";
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "User-Agent":
+          "Scoutpost/1.0 (+https://scoutpost.ai; editorial monitoring)",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+      signal: AbortSignal.timeout(8_000),
+    });
+    return classifyProfileProbeStatus(res.status);
+  } catch (e) {
+    if (
+      e instanceof Error &&
+      looksLikeMissingProfileError(e.message)
+    ) {
+      return "missing";
+    }
+    return "uncertain";
+  }
 }
 
 function extractHandleFromUrl(

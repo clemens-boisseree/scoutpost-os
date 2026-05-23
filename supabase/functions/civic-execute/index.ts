@@ -32,6 +32,11 @@ import { NotFoundError, ValidationError } from "../_shared/errors.ts";
 import { logEvent } from "../_shared/log.ts";
 import { firecrawlChangeTrackingScrape } from "../_shared/firecrawl.ts";
 import {
+  allTrackedUrlsAre4xx,
+  CivicTrackedUrlStatus,
+  firecrawlUpstreamStatus,
+} from "../_shared/civic_diagnostics.ts";
+import {
   classifyCivicMeetingUrls,
   extractCivicLinksFromPages,
   isCivicDirectDocumentUrl,
@@ -215,10 +220,12 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
     let queuedCount = 0;
     let scrapeFailureCount = 0;
     let queueFailureCount = 0;
+    const trackedUrlStatus: CivicTrackedUrlStatus[] = [];
 
     for (const url of tracked) {
       if (queuedCount >= MAX_DOCS_PER_RUN) break;
       if (!isCivicScrapableUrl(url)) {
+        trackedUrlStatus.push({ url, status: "unsupported" });
         logEvent({
           level: "warn",
           fn: "civic-execute",
@@ -234,6 +241,12 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
         result = await firecrawlChangeTrackingScrape(url, tag);
       } catch (e) {
         scrapeFailureCount += 1;
+        trackedUrlStatus.push({
+          url,
+          status: "scrape_failed",
+          upstream_status: firecrawlUpstreamStatus(e),
+          error: e instanceof Error ? e.message.slice(0, 500) : String(e),
+        });
         logEvent({
           level: "warn",
           fn: "civic-execute",
@@ -253,6 +266,12 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
           queueSeen.has(directDocumentUrl) ||
           (result.change_status === "same" && scoutSeen.has(directDocumentUrl))
         ) {
+          trackedUrlStatus.push({
+            url,
+            status: "already_seen",
+            change_status: result.change_status,
+            queued_documents: 0,
+          });
           continue;
         }
         if (
@@ -267,13 +286,32 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
           skipSet.add(directDocumentUrl);
           queueSeen.add(directDocumentUrl);
           queuedCount += 1;
+          trackedUrlStatus.push({
+            url,
+            status: "queued",
+            change_status: result.change_status,
+            queued_documents: 1,
+          });
         } else {
           queueFailureCount += 1;
+          trackedUrlStatus.push({
+            url,
+            status: "scraped",
+            change_status: result.change_status,
+            queued_documents: 0,
+            error: "queue insert failed",
+          });
         }
         continue;
       }
 
       if (result.change_status === "same") {
+        trackedUrlStatus.push({
+          url,
+          status: "unchanged",
+          change_status: result.change_status,
+          queued_documents: 0,
+        });
         continue;
       }
 
@@ -283,6 +321,7 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
       }]))).map((docUrl) => normalizeCivicUrl(docUrl)).filter(
         (docUrl): docUrl is string => Boolean(docUrl),
       );
+      let queuedForTrackedUrl = 0;
       for (const docUrl of docs) {
         if (queuedCount >= MAX_DOCS_PER_RUN) break;
         if (skipSet.has(docUrl)) continue;
@@ -306,7 +345,44 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
         // only touched by the worker — on successful extraction.
         skipSet.add(docUrl);
         queuedCount += 1;
+        queuedForTrackedUrl += 1;
       }
+      trackedUrlStatus.push({
+        url,
+        status: queuedForTrackedUrl > 0 ? "queued" : "no_new_documents",
+        change_status: result.change_status,
+        queued_documents: queuedForTrackedUrl,
+      });
+    }
+
+    await persistCivicRunMetadata(db, runId, trackedUrlStatus);
+
+    if (allTrackedUrlsAre4xx(trackedUrlStatus, tracked.length)) {
+      await refundCredits(db, {
+        userId: scout.user_id,
+        cost: CREDIT_COSTS.civic,
+        scoutId: scout.id,
+        scoutType: "civic",
+        operation: "civic",
+      });
+      const message = "all civic tracked URLs returned upstream 4xx";
+      await markRunError(db, runId, {
+        stage: "scrape",
+        errorClass: "validation",
+        message,
+        status: "skipped",
+      });
+      await persistCivicRunMetadata(db, runId, trackedUrlStatus, {
+        criteria_status: false,
+        notification_status: "skipped",
+      });
+      return jsonOk({
+        status: "skipped",
+        run_id: runId,
+        queued: 0,
+        tracked_urls_checked: tracked.length,
+        reason: "all_tracked_urls_4xx",
+      });
     }
 
     if (
@@ -369,7 +445,10 @@ async function execute(scoutId: string, runIdIn?: string): Promise<Response> {
       unitsMerged: 0,
       criteriaStatus: queuedCount > 0,
       notificationStatus: queuedCount > 0 ? "pending" : "not_applicable",
+      sourcesScraped: tracked.length - scrapeFailureCount,
+      sourcesFailed: scrapeFailureCount + queueFailureCount,
     });
+    await persistCivicRunMetadata(db, runId, trackedUrlStatus);
 
     logEvent({
       level: "info",
@@ -518,6 +597,45 @@ async function resolveRun(
     .single();
   if (error) throw new Error(error.message);
   return data.id as string;
+}
+
+async function persistCivicRunMetadata(
+  db: SupabaseClient,
+  runId: string,
+  trackedUrlStatus: CivicTrackedUrlStatus[],
+  patch: Record<string, unknown> = {},
+): Promise<void> {
+  const { data: run } = await db
+    .from("scout_runs")
+    .select("metadata")
+    .eq("id", runId)
+    .maybeSingle();
+  const existing = run && typeof run === "object" &&
+      (run as { metadata?: unknown }).metadata &&
+      typeof (run as { metadata?: unknown }).metadata === "object" &&
+      !Array.isArray((run as { metadata?: unknown }).metadata)
+    ? (run as { metadata: Record<string, unknown> }).metadata
+    : {};
+  const { error } = await db
+    .from("scout_runs")
+    .update({
+      ...patch,
+      metadata: {
+        ...existing,
+        tracked_url_status: trackedUrlStatus,
+        tracked_url_status_updated_at: new Date().toISOString(),
+      },
+    })
+    .eq("id", runId);
+  if (error) {
+    logEvent({
+      level: "warn",
+      fn: "civic-execute",
+      event: "run_metadata_update_failed",
+      run_id: runId,
+      msg: error.message,
+    });
+  }
 }
 
 function normalizeCivicUrl(url: string): string | null {

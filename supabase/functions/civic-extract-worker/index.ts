@@ -360,10 +360,12 @@ Set criteria_match=false for any promise that fails or only partially satisfies 
     EXTRACTION_SCHEMA,
     { systemInstruction },
   );
-  const extracted =
-    (Array.isArray(extraction?.promises) ? extraction.promises : []).filter((
-      p,
-    ) => !scout.criteria?.trim() || p.criteria_match !== false);
+  const candidatePromises = Array.isArray(extraction?.promises)
+    ? extraction.promises
+    : [];
+  const extracted = candidatePromises.filter((p) =>
+    !scout.criteria?.trim() || p.criteria_match !== false
+  );
 
   // 5. Insert each promise. Drop promises whose due_date is already in the past
   //    — the digest query surfaces future-due commitments; legacy civic
@@ -456,6 +458,18 @@ Set criteria_match=false for any promise that fails or only partially satisfies 
       queue_id: row.id,
       scout_id: row.scout_id,
       count: droppedPastDue,
+    });
+  }
+
+  if (row.scout_run_id) {
+    await recordCivicExtractionDiagnostics(svc, row.scout_run_id, {
+      pdfsParsed: row.doc_kind === "pdf" ? 1 : 0,
+      candidateUnitsBeforeFilter: candidatePromises.length,
+      unitsStored: inserted + mergedExisting,
+      emptySuccessReason: row.doc_kind === "pdf" &&
+          inserted + mergedExisting === 0
+        ? "all_pdfs_filtered_no_candidates"
+        : null,
     });
   }
 
@@ -667,4 +681,63 @@ async function upsertPromiseTracker(
     })
     .eq("id", existing.id);
   if (updateErr) throw new Error(updateErr.message);
+}
+
+async function recordCivicExtractionDiagnostics(
+  svc: SupabaseClient,
+  runId: string,
+  diagnostics: {
+    pdfsParsed: number;
+    candidateUnitsBeforeFilter: number;
+    unitsStored: number;
+    emptySuccessReason: string | null;
+  },
+): Promise<void> {
+  const { data: run } = await svc
+    .from("scout_runs")
+    .select("metadata")
+    .eq("id", runId)
+    .maybeSingle();
+  const metadata = run && typeof run === "object" &&
+      (run as { metadata?: unknown }).metadata &&
+      typeof (run as { metadata?: unknown }).metadata === "object" &&
+      !Array.isArray((run as { metadata?: unknown }).metadata)
+    ? { ...(run as { metadata: Record<string, unknown> }).metadata }
+    : {};
+  const pdfsParsed = numberFromMetadata(metadata.pdfs_parsed) +
+    diagnostics.pdfsParsed;
+  const candidateUnitsBeforeFilter = numberFromMetadata(
+    metadata.candidate_units_before_filter,
+  ) + diagnostics.candidateUnitsBeforeFilter;
+  const unitsStored = numberFromMetadata(metadata.civic_units_stored) +
+    diagnostics.unitsStored;
+  const emptySuccessReason = unitsStored === 0 && pdfsParsed > 0
+    ? diagnostics.emptySuccessReason
+    : null;
+
+  const { error } = await svc
+    .from("scout_runs")
+    .update({
+      metadata: {
+        ...metadata,
+        pdfs_parsed: pdfsParsed,
+        candidate_units_before_filter: candidateUnitsBeforeFilter,
+        civic_units_stored: unitsStored,
+        empty_success_reason: emptySuccessReason,
+      },
+    })
+    .eq("id", runId);
+  if (error) {
+    logEvent({
+      level: "warn",
+      fn: "civic-extract-worker",
+      event: "run_diagnostics_update_failed",
+      run_id: runId,
+      msg: error.message,
+    });
+  }
+}
+
+function numberFromMetadata(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }

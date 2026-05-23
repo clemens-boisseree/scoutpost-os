@@ -44,6 +44,11 @@ import {
   SOCIAL_APIFY_ACTORS,
 } from "../_shared/social_baseline.ts";
 import {
+  resolveSocialProfile,
+  type SocialProfileResolution,
+  socialProfileResolutionMetadata,
+} from "../_shared/social_profiles.ts";
+import {
   classifyRunError,
   markRunError,
   markRunStage,
@@ -126,7 +131,9 @@ async function startApifyRun(
   // 1. Load scout.
   const { data: scout, error: scoutErr } = await svc
     .from("scouts")
-    .select("id, user_id, name, preferred_language, platform, profile_handle, baseline_established_at")
+    .select(
+      "id, user_id, name, preferred_language, platform, profile_handle, baseline_established_at, metadata",
+    )
     .eq("id", scoutId)
     .maybeSingle();
   if (scoutErr) throw new Error(scoutErr.message);
@@ -161,6 +168,29 @@ async function startApifyRun(
     runId = runRow.id as string;
   }
   await markRunStage(svc, runId, "dispatch");
+
+  const profileResolution = await resolveSocialProfile(
+    platform as "instagram" | "x" | "facebook" | "tiktok",
+    handle,
+  );
+  await persistSocialAdapterMetadata(svc, {
+    scoutId,
+    runId,
+    scoutMetadata: asObject(scout.metadata),
+    resolution: profileResolution,
+  });
+  if (profileResolution.adapter_status === "profile_missing") {
+    const detail =
+      `social profile not found after ${profileResolution.attempts.length} profile probe(s): ${profileResolution.input_handle}`;
+    await markRunError(svc, runId, {
+      stage: "dispatch",
+      errorClass: "validation",
+      message: detail,
+      status: "skipped",
+    });
+    return jsonError(detail, 422, "profile_missing");
+  }
+  const resolvedHandle = profileResolution.resolved_handle || handle;
 
   const { data: snapshot, error: snapshotErr } = await svc
     .from("post_snapshots")
@@ -235,7 +265,7 @@ async function startApifyRun(
       scout_id: scoutId,
       scout_run_id: runId,
       platform,
-      handle,
+      handle: resolvedHandle,
       status: "pending",
       created_at: new Date().toISOString(),
     })
@@ -286,7 +316,7 @@ async function startApifyRun(
   //    supplied as a base64-encoded JSON query parameter — a top-level
   //    `webhooks` field in the JSON body is silently dropped (verified live
   //    2026-04-21: webhook-dispatches=0 for every body-passed registration).
-  const input = buildActorInput(platform, handle);
+  const input = buildActorInput(platform, resolvedHandle);
   let runsUrl = `https://api.apify.com/v2/acts/${actorId}/runs`;
   if (Deno.env.get("APIFY_DISABLE_WEBHOOK") !== "1") {
     const supabaseUrl = getSupabaseUrl();
@@ -418,10 +448,18 @@ async function startApifyRun(
     queue_id: queueId,
     apify_run_id: apifyRunId,
     platform,
+    adapter_status: profileResolution.adapter_status,
+    resolved_profile_url: profileResolution.resolved_profile_url,
   });
 
   return jsonOk(
-    { status: "started", queue_id: queueId, apify_run_id: apifyRunId },
+    {
+      status: "started",
+      queue_id: queueId,
+      apify_run_id: apifyRunId,
+      adapter_status: profileResolution.adapter_status,
+      resolved_profile_url: profileResolution.resolved_profile_url,
+    },
     202,
   );
 }
@@ -523,4 +561,47 @@ async function safeText(res: Response): Promise<string> {
   } catch {
     return "";
   }
+}
+
+function socialAdapterMetadata(
+  resolution: SocialProfileResolution,
+): Record<string, unknown> {
+  return socialProfileResolutionMetadata(resolution);
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+async function persistSocialAdapterMetadata(
+  svc: SupabaseClient,
+  opts: {
+    scoutId: string;
+    runId: string;
+    scoutMetadata: Record<string, unknown>;
+    resolution: SocialProfileResolution;
+  },
+): Promise<void> {
+  const metadata = socialAdapterMetadata(opts.resolution);
+  const { error: scoutErr } = await svc
+    .from("scouts")
+    .update({ metadata: { ...opts.scoutMetadata, ...metadata } })
+    .eq("id", opts.scoutId);
+  if (scoutErr) throw new Error(scoutErr.message);
+
+  const { data: run } = await svc
+    .from("scout_runs")
+    .select("metadata")
+    .eq("id", opts.runId)
+    .maybeSingle();
+  const runMetadata = asObject(
+    (run as { metadata?: Record<string, unknown> | null } | null)?.metadata,
+  );
+  const { error: runErr } = await svc
+    .from("scout_runs")
+    .update({ metadata: { ...runMetadata, ...metadata } })
+    .eq("id", opts.runId);
+  if (runErr) throw new Error(runErr.message);
 }

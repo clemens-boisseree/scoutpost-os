@@ -63,6 +63,10 @@ import {
   shouldIncrementScoutFailure,
 } from "../_shared/run_lifecycle.ts";
 import { incrementAndMaybeNotify } from "../_shared/scout_failures.ts";
+import {
+  criteriaScoreFromUnit,
+  socialCriteriaThreshold,
+} from "../_shared/social_criteria.ts";
 
 const MAX_NEW_POSTS = 20;
 const DATASET_LIMIT = 50;
@@ -87,6 +91,15 @@ const EXTRACTION_SCHEMA: Record<string, unknown> = {
             description:
               "True only if this unit satisfies every explicit criterion.",
           },
+          criteria_score: {
+            type: "number",
+            description:
+              "0-1 confidence that this unit satisfies every explicit criterion.",
+          },
+          criteria_reason: {
+            type: "string",
+            description: "Brief reason for the criteria score.",
+          },
         },
         required: ["statement", "type", "criteria_match"],
       },
@@ -100,6 +113,8 @@ interface ExtractedUnit {
   type: "fact" | "event" | "entity_update";
   context_excerpt?: string;
   criteria_match?: boolean | null;
+  criteria_score?: number | null;
+  criteria_reason?: string | null;
 }
 
 interface ApifyPost {
@@ -269,6 +284,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         criteriaStatus: result.new_posts_count > 0 ||
           (result.removed_posts?.length ?? 0) > 0,
         notificationStatus: shouldNotify ? "pending" : "skipped",
+        sourcesScraped: 1,
+        sourcesFailed: 0,
       });
     }
 
@@ -422,7 +439,7 @@ async function notifySocial(
     return { ok: false, reason: "missing_run_id" };
   }
   const platform = scout.platform ?? queueRow.platform;
-  const handle = scout.profile_handle ?? queueRow.handle;
+  const handle = queueRow.handle ?? scout.profile_handle;
   const userId = (scout.user_id ?? queueRow.user_id) as string;
 
   const summaryPosts = newPosts.slice(0, 5).map((p) => {
@@ -560,7 +577,7 @@ async function processSucceededRun(
   const { data: scout, error: scoutErr } = await svc
     .from("scouts")
     .select(
-      "id, user_id, name, platform, profile_handle, monitor_mode, criteria, topic, track_removals",
+      "id, user_id, name, platform, profile_handle, monitor_mode, criteria, topic, track_removals, metadata",
     )
     .eq("id", queueRow.scout_id)
     .maybeSingle();
@@ -619,7 +636,7 @@ async function processSucceededRun(
     scout_id: scout.id,
     user_id: scout.user_id ?? queueRow.user_id,
     platform: scout.platform ?? queueRow.platform,
-    handle: scout.profile_handle ?? queueRow.handle,
+    handle: queueRow.handle ?? scout.profile_handle,
     post_count: realCurrentPosts.length,
     posts: realCurrentPosts,
     updated_at: new Date().toISOString(),
@@ -680,12 +697,17 @@ async function processSucceededRun(
 
     // Criteria path: Gemini structured extraction.
     let extracted: ExtractedUnit[] = [];
+    const threshold = socialCriteriaThreshold(
+      scout.platform ?? queueRow.platform,
+      scout.metadata,
+    );
     try {
       const prompt =
         "Extract factual statements from the social-media post below that match " +
         `the following criteria HARD FILTER: "${scout.criteria}". ` +
         "Only return units that satisfy EVERY explicit criterion; if a post or statement only partially matches, return no unit for it. " +
-        "Set criteria_match=false for any unit that fails or only partially satisfies the criteria. " +
+        `Set criteria_match=false for any unit with criteria_score below ${threshold}. ` +
+        "For every unit, include criteria_score from 0 to 1 and a terse criteria_reason. " +
         "For each match, give a one-sentence `statement`, a `type` " +
         "(fact|event|entity_update), and a short `context_excerpt`. " +
         "If no statement matches, return an empty array.\n\nPOST:\n" + text;
@@ -709,7 +731,8 @@ async function processSucceededRun(
       if (!u || typeof u.statement !== "string" || !u.statement.trim()) {
         continue;
       }
-      if (u.criteria_match === false) continue;
+      const score = criteriaScoreFromUnit(u);
+      if (u.criteria_match === false || score < threshold) continue;
       if (!["fact", "event", "entity_update"].includes(u.type)) continue;
       try {
         const inserted = await insertUnit(svc, scout, queueRow, u, post);
@@ -749,6 +772,7 @@ interface ScoutRow {
   criteria: string | null;
   topic: string | null;
   track_removals: boolean | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 async function insertUnit(
@@ -810,9 +834,15 @@ async function insertUnit(
     scoutType: "social",
     scoutRunId: queueRow.scout_run_id,
     metadata: {
-      handle: scout.profile_handle ?? queueRow.handle,
+      handle: queueRow.handle ?? scout.profile_handle,
       platform,
       post_id: typeof post.id === "string" ? post.id : null,
+      criteria_score: typeof unit.criteria_score === "number"
+        ? criteriaScoreFromUnit(unit)
+        : null,
+      criteria_reason: typeof unit.criteria_reason === "string"
+        ? unit.criteria_reason.slice(0, 500)
+        : null,
     },
   });
 }
