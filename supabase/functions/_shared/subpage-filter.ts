@@ -65,6 +65,7 @@ export function isLikelyArticleUrl(url: string): boolean {
   if (/\.(html?|php|aspx)$/i.test(last)) return true;
   if (/^\d{5,}$/.test(last)) return true;
   if (/[a-z][a-z0-9-]*-\d{5,}$/i.test(last)) return true;
+  if (hasLongArticleSlug(last)) return true;
   return false;
 }
 
@@ -157,6 +158,14 @@ function hasStaticAsset(path: string): boolean {
 
 function isUtilityPath(path: string): boolean {
   return /\/(?:ical|rss)\.php$/i.test(path);
+}
+
+function hasLongArticleSlug(segment: string): boolean {
+  if (segment.length < 12) return false;
+  const words = segment.split("-").filter(Boolean);
+  if (words.length < 3) return false;
+  return words.some((word) => /[a-z]/i.test(word)) &&
+    words.every((word) => /^[a-z0-9]+$/i.test(word));
 }
 
 function hasSplitDatePath(segments: string[]): boolean {

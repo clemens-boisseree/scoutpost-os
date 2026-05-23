@@ -203,6 +203,12 @@ Deno.test("isLikelyArticleUrl recognizes only concrete article route shapes", ()
   assertEquals(isLikelyArticleUrl("https://example.ch/story/ld.4158147"), true);
   assertEquals(
     isLikelyArticleUrl(
+      "https://gijn.org/resource/guide-mapping-analysis-qgis/",
+    ),
+    true,
+  );
+  assertEquals(
+    isLikelyArticleUrl(
       "https://www.engadinerpost.ch/news/2026/05/06/Getruebte-Freude-im-Bildungshaus",
     ),
     true,
