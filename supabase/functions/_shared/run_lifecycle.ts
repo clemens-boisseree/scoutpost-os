@@ -127,9 +127,11 @@ export async function markRunSuccess(
     stage?: RunStage;
     scraperStatus?: boolean;
     errorMessage?: string | null;
+    sourcesScraped?: number;
+    sourcesFailed?: number;
   },
 ): Promise<void> {
-  await updateRun(db, runId, {
+  const updateValues: Record<string, unknown> = {
     status: "success",
     stage: opts.stage ?? "finalize",
     error_class: null,
@@ -142,17 +144,32 @@ export async function markRunSuccess(
     units_merged_count: opts.unitsMerged,
     notification_status: opts.notificationStatus,
     completed_at: new Date().toISOString(),
-  });
+  };
+  if (opts.sourcesScraped !== undefined) {
+    updateValues.sources_scraped = opts.sourcesScraped;
+  }
+  if (opts.sourcesFailed !== undefined) {
+    updateValues.sources_failed = opts.sourcesFailed;
+  }
+  await updateRun(db, runId, updateValues);
+
+  const eventMetadata: Record<string, unknown> = {
+    units_created_count: opts.unitsCreated,
+    units_merged_count: opts.unitsMerged,
+    criteria_status: opts.criteriaStatus,
+  };
+  if (opts.sourcesScraped !== undefined) {
+    eventMetadata.sources_scraped = opts.sourcesScraped;
+  }
+  if (opts.sourcesFailed !== undefined) {
+    eventMetadata.sources_failed = opts.sourcesFailed;
+  }
   await recordRunEvent(db, runId, {
     stage: opts.stage ?? "finalize",
     status: "success",
     notificationStatus: opts.notificationStatus,
     message: opts.errorMessage ?? null,
-    metadata: {
-      units_created_count: opts.unitsCreated,
-      units_merged_count: opts.unitsMerged,
-      criteria_status: opts.criteriaStatus,
-    },
+    metadata: eventMetadata,
   });
 }
 

@@ -35,6 +35,11 @@ import {
   firecrawlSearch,
   ScrapeResult,
 } from "../_shared/firecrawl.ts";
+import {
+  normalizeRetrievalPort,
+  resolveBeatRetrievalPort,
+  shouldFallbackFromExa,
+} from "../_shared/exa.ts";
 import { isWithinRunDuplicate } from "../_shared/dedup.ts";
 import { EMBEDDING_MODEL_TAG, geminiEmbed } from "../_shared/gemini.ts";
 import {
@@ -49,8 +54,16 @@ import {
   BeatScope,
   BeatSourceMode,
   discoverBeatHits,
-  generateBeatSummary,
 } from "../_shared/beat_pipeline.ts";
+import {
+  logBeatAbRun,
+  promoteScoutFallbackAfterRepeatedExaLowCoverage,
+} from "../_shared/beat_ab_logger.ts";
+import {
+  type DigestArticle,
+  formatBeatDigest,
+  verifyPlaceNamesGrounded,
+} from "../_shared/extractive_summary.ts";
 import {
   CREDIT_COSTS,
   decrementOrThrow,
@@ -146,6 +159,58 @@ function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.filter((v) => v.trim().length > 0))];
 }
 
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function shouldRunBeatAbShadow(
+  scoutMetadata: Record<string, unknown>,
+): boolean {
+  const env = (Deno.env.get("BEAT_AB_SHADOW") ?? "").toLowerCase();
+  if (env === "1" || env === "true" || env === "yes") return true;
+  return scoutMetadata.ab_shadow === true ||
+    scoutMetadata.beat_ab_shadow === true;
+}
+
+function alternateRetrievalPort(
+  retrieval: "firecrawl" | "exa",
+): "firecrawl" | "exa" {
+  return retrieval === "exa" ? "firecrawl" : "exa";
+}
+
+async function mergeRunMetadata(
+  db: SupabaseClient,
+  runId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const { data: run } = await db
+      .from("scout_runs")
+      .select("metadata")
+      .eq("id", runId)
+      .maybeSingle();
+    const metadata = {
+      ...asObject((run as { metadata?: unknown } | null)?.metadata),
+      ...patch,
+    };
+    const { error } = await db
+      .from("scout_runs")
+      .update({ metadata })
+      .eq("id", runId);
+    if (error) throw new Error(error.message);
+  } catch (e) {
+    logEvent({
+      level: "warn",
+      fn: "scout-beat-execute",
+      event: "run_metadata_update_failed",
+      run_id: runId,
+      msg: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
 async function discoverPriorityDomainHits(opts: {
   domains: string[];
   criteria: string | null;
@@ -198,6 +263,72 @@ async function discoverPriorityDomainHits(opts: {
     }
   }
   return hits;
+}
+
+interface RetrievalDiscoveryOpts {
+  port: "firecrawl" | "exa";
+  scope: BeatScope;
+  sourceMode: BeatSourceMode;
+  cityName: string | null;
+  countryName: string | null;
+  countryCode: string | null;
+  searchCriteria: string | null;
+  preferredLanguage: string;
+  excludedDomains: string[];
+  includeGovernment: boolean;
+}
+
+interface RetrievalDiscoveryResult {
+  news: BeatHit[];
+  gov: BeatHit[];
+  raw: BeatHit[];
+  totalCostDollars: number | null;
+}
+
+async function discoverForRetrievalPort(
+  opts: RetrievalDiscoveryOpts,
+): Promise<RetrievalDiscoveryResult> {
+  const newsDiscovery = await discoverBeatHits({
+    scope: opts.scope,
+    sourceMode: opts.sourceMode,
+    category: "news",
+    city: opts.cityName,
+    country: opts.countryName,
+    countryCode: opts.countryCode,
+    criteria: opts.searchCriteria,
+    preferredLanguage: opts.preferredLanguage,
+    excludedDomains: opts.excludedDomains,
+    retrievalPort: opts.port,
+  });
+  let gov: BeatHit[] = [];
+  let govRaw: BeatHit[] = [];
+  let totalCostDollars = newsDiscovery.totalCostDollars;
+  if (opts.includeGovernment) {
+    const govDiscovery = await discoverBeatHits({
+      scope: "combined",
+      sourceMode: opts.sourceMode,
+      category: "government",
+      city: opts.cityName,
+      country: opts.countryName,
+      countryCode: opts.countryCode,
+      criteria: opts.searchCriteria,
+      preferredLanguage: opts.preferredLanguage,
+      excludedDomains: opts.excludedDomains,
+      retrievalPort: opts.port,
+    });
+    gov = govDiscovery.hits;
+    govRaw = govDiscovery.rawHits;
+    if (typeof govDiscovery.totalCostDollars === "number") {
+      totalCostDollars = (totalCostDollars ?? 0) +
+        govDiscovery.totalCostDollars;
+    }
+  }
+  return {
+    news: newsDiscovery.hits,
+    gov,
+    raw: newsDiscovery.rawHits.concat(govRaw),
+    totalCostDollars,
+  };
 }
 
 function compactSearchPart(value: string, limit: number): string {
@@ -286,6 +417,14 @@ async function execute(
   //    fail visibly without spending credits.
   const runId = await resolveRun(db, scout, runIdIn);
   await markRunStage(db, runId, "dispatch");
+  const scoutMetadata = asObject(scout.metadata);
+  const retrievalPort = resolveBeatRetrievalPort(scoutMetadata);
+  let effectiveRetrievalPort = retrievalPort;
+  const retrievalEnv = normalizeRetrievalPort(Deno.env.get("BEAT_RETRIEVAL"));
+  const runBeatAbShadow = retrievalEnv === "firecrawl"
+    ? false
+    : shouldRunBeatAbShadow(scoutMetadata);
+  await mergeRunMetadata(db, runId, { retrieval: retrievalPort });
   let chargedCredits = false;
 
   if (!baselineOnly && !scout.baseline_established_at) {
@@ -394,6 +533,9 @@ async function execute(
     let newsBeatHits: BeatHit[] = [];
     let govBeatHits: BeatHit[] = [];
     let priorityBeatHits: BeatHit[] = [];
+    let rawBeatHits: BeatHit[] = [];
+    let retrievalTotalCostDollars: number | null = null;
+    let retrievalFallbackTriggered = false;
     const priorityPlan = partitionPrioritySources(manualSources);
 
     if (
@@ -418,29 +560,119 @@ async function execute(
           excludedDomains,
         });
       }
-      newsBeatHits = (await discoverBeatHits({
+      const baseDiscoveryOpts = {
         scope,
         sourceMode,
-        category: "news",
-        city: cityName,
-        country: countryName,
+        cityName,
+        countryName,
         countryCode,
-        criteria: searchCriteria,
+        searchCriteria,
         preferredLanguage,
         excludedDomains,
-      })).hits;
-      if (hasLocation && hasCriteria) {
-        govBeatHits = (await discoverBeatHits({
-          scope: "combined",
-          sourceMode,
-          category: "government",
-          city: cityName,
-          country: countryName,
-          countryCode,
-          criteria: searchCriteria,
-          preferredLanguage,
-          excludedDomains,
-        })).hits;
+        includeGovernment: hasLocation && hasCriteria,
+      };
+      let primaryDiscovery = await discoverForRetrievalPort({
+        ...baseDiscoveryOpts,
+        port: retrievalPort,
+      });
+      const primaryDiscoveredCount = primaryDiscovery.news.length +
+        primaryDiscovery.gov.length +
+        priorityBeatHits.length;
+      if (
+        shouldFallbackFromExa({
+          requestedRetrieval: retrievalPort,
+          retrievalEnv,
+          discoveredCount: primaryDiscoveredCount,
+          scoutMetadata,
+        })
+      ) {
+        await logBeatAbRun(db, {
+          scoutId,
+          runId,
+          userId: scout.user_id as string,
+          retrieval: "exa",
+          rawHits: primaryDiscovery.raw,
+          finalHits: [...primaryDiscovery.news, ...primaryDiscovery.gov],
+          unitsCreated: 0,
+          unitsMerged: 0,
+          totalCostDollars: primaryDiscovery.totalCostDollars,
+          location: {
+            city: cityName,
+            country: countryName,
+            countryCode,
+          },
+          metadata: {
+            scope,
+            source_mode: sourceMode,
+            fallback_triggered: true,
+            fallback_reason: "exa_low_coverage",
+            selected_url_count: primaryDiscoveredCount,
+          },
+        });
+        await promoteScoutFallbackAfterRepeatedExaLowCoverage(db, { scoutId });
+        primaryDiscovery = await discoverForRetrievalPort({
+          ...baseDiscoveryOpts,
+          port: "firecrawl",
+        });
+        effectiveRetrievalPort = "firecrawl";
+        retrievalFallbackTriggered = true;
+        await mergeRunMetadata(db, runId, {
+          retrieval: "firecrawl",
+          requested_retrieval: "exa",
+          fallback_reason: "exa_low_coverage",
+          exa_candidate_count: primaryDiscoveredCount,
+        });
+      }
+      newsBeatHits = primaryDiscovery.news;
+      govBeatHits = primaryDiscovery.gov;
+      rawBeatHits = rawBeatHits.concat(primaryDiscovery.raw);
+      retrievalTotalCostDollars = primaryDiscovery.totalCostDollars;
+
+      if (runBeatAbShadow && !retrievalFallbackTriggered) {
+        const shadowPort = alternateRetrievalPort(effectiveRetrievalPort);
+        try {
+          const shadowDiscovery = await discoverForRetrievalPort({
+            ...baseDiscoveryOpts,
+            port: shadowPort,
+          });
+          const shadowFinalHits = [
+            ...shadowDiscovery.news,
+            ...shadowDiscovery.gov,
+          ].slice(0, maxDiscoveredSources);
+          await logBeatAbRun(db, {
+            scoutId,
+            runId,
+            userId: scout.user_id as string,
+            retrieval: shadowPort,
+            rawHits: shadowDiscovery.raw,
+            finalHits: shadowFinalHits,
+            unitsCreated: 0,
+            unitsMerged: 0,
+            totalCostDollars: shadowDiscovery.totalCostDollars,
+            location: {
+              city: cityName,
+              country: countryName,
+              countryCode,
+            },
+            metadata: {
+              scope,
+              source_mode: sourceMode,
+              shadow: true,
+              primary_retrieval: effectiveRetrievalPort,
+              selected_url_count: shadowFinalHits.length,
+            },
+          });
+        } catch (e) {
+          logEvent({
+            level: "warn",
+            fn: "scout-beat-execute",
+            event: "beat_ab_shadow_failed",
+            scout_id: scoutId,
+            run_id: runId,
+            retrieval: shadowPort,
+            msg: e instanceof Error ? e.message : String(e),
+          });
+        }
       }
       finalUrls = [
         ...priorityBeatHits.map((h) => h.url),
@@ -456,6 +688,9 @@ async function execute(
     for (const hit of [...priorityBeatHits, ...newsBeatHits, ...govBeatHits]) {
       if (hit.url) beatHitByUrl.set(hit.url, hit);
     }
+    const selectedBeatHits = finalUrls
+      .map((url) => beatHitByUrl.get(url))
+      .filter((hit): hit is BeatHit => Boolean(hit));
 
     if (finalUrls.length === 0) {
       // Empty pipeline outcome (no discovered URLs) — record a no-op success
@@ -472,6 +707,30 @@ async function execute(
         unitsMerged: 0,
         criteriaStatus: false,
         notificationStatus: baselineOnly ? "not_applicable" : "skipped",
+        sourcesScraped: 0,
+        sourcesFailed: 0,
+      });
+      await logBeatAbRun(db, {
+        scoutId,
+        runId,
+        userId: scout.user_id as string,
+        retrieval: effectiveRetrievalPort,
+        rawHits: rawBeatHits,
+        finalHits: [],
+        unitsCreated: 0,
+        unitsMerged: 0,
+        totalCostDollars: retrievalTotalCostDollars,
+        location: {
+          city: cityName,
+          country: countryName,
+          countryCode,
+        },
+        metadata: {
+          scope,
+          source_mode: sourceMode,
+          baseline_only: baselineOnly,
+          selected_url_count: 0,
+        },
       });
       if (chargedCredits) {
         await refundCredits(db, {
@@ -580,8 +839,6 @@ async function execute(
     let embedFailureCount = 0;
     let unitInsertFailureCount = 0;
     const insertedStatements: string[] = [];
-    const newsStatements: string[] = [];
-    const govStatements: string[] = [];
     const runEmbeddings: number[][] = [];
     const baselineUnitIds = new Set<string>();
     const surfacedArticles = new Map<
@@ -721,18 +978,13 @@ async function execute(
               surfacedArticles.set(src.source_url, {
                 title: src.title ?? src.source_url,
                 url: src.source_url,
-                summary: "",
+                summary: u.context_excerpt ?? u.statement,
                 source: safeDomain(src.source_url) ?? "",
                 category: govUrlSet.has(src.source_url) ? "government" : "news",
               });
             }
             if (insertedStatements.length < 10) {
               insertedStatements.push(u.statement);
-            }
-            if (govUrlSet.has(src.source_url)) {
-              if (govStatements.length < 5) govStatements.push(u.statement);
-            } else {
-              if (newsStatements.length < 5) newsStatements.push(u.statement);
             }
           } else if (result.mergedExisting && result.occurrenceCreated) {
             mergedExistingCount += 1;
@@ -815,6 +1067,33 @@ async function execute(
         ? "pending"
         : "skipped",
       errorMessage: baselineOnly ? null : noSurfaceReason,
+      sourcesScraped: succeeded.length,
+      sourcesFailed: failures.length,
+    });
+    await logBeatAbRun(db, {
+      scoutId,
+      runId,
+      userId: scout.user_id as string,
+      retrieval: effectiveRetrievalPort,
+      rawHits: rawBeatHits,
+      finalHits: selectedBeatHits,
+      unitsCreated: baselineOnly ? 0 : insertedCount,
+      unitsMerged: baselineOnly ? 0 : mergedExistingCount,
+      totalCostDollars: retrievalTotalCostDollars,
+      location: {
+        city: cityName,
+        country: countryName,
+        countryCode,
+      },
+      metadata: {
+        scope,
+        source_mode: sourceMode,
+        baseline_only: baselineOnly,
+        priority_domain_hits: priorityBeatHits.length,
+        selected_url_count: finalUrls.length,
+        requested_retrieval: retrievalPort,
+        fallback_triggered: retrievalFallbackTriggered,
+      },
     });
 
     const { error: resetErr } = await db.rpc("reset_scout_failures", {
@@ -844,43 +1123,52 @@ async function execute(
     });
 
     // Notify user when new, non-duplicate units landed. Build separate article
-    // cards for news vs government (legacy behaviour), with LLM-composed
-    // summaries per section rather than raw statement bullets.
+    // cards for news vs government and deterministic extractive digest text for
+    // each section.
     if (willNotify) {
       try {
-        const newsArticles: Article[] = [...surfacedArticles.values()]
+        const newsArticleRecords = [...surfacedArticles.values()]
           .filter((article) => article.category === "news")
-          .slice(0, 5)
-          .map(({ category: _category, ...article }) => article);
-        const govArticles: Article[] = [...surfacedArticles.values()]
+          .slice(0, 5);
+        const govArticleRecords = [...surfacedArticles.values()]
           .filter((article) => article.category === "government")
-          .slice(0, 5)
-          .map(({ category: _category, ...article }) => article);
+          .slice(0, 5);
+        const newsArticles: Article[] = newsArticleRecords.map((
+          { category: _category, ...article },
+        ) => article);
+        const govArticles: Article[] = govArticleRecords.map((
+          { category: _category, ...article },
+        ) => article);
 
-        // Prefer LLM-composed summaries when pipeline produced hits; fall back
-        // to bulleted statement list for the manual-priority-sources path.
+        // Deterministic extractive digest. Every summary line is composed from
+        // the same article records rendered below, so it cannot cite discarded
+        // URLs or introduce a separately-generated location claim.
         const emailLang = (preferredLanguage ?? "en").toLowerCase();
-        const surfacedUrls = new Set(surfacedArticles.keys());
-        const successfulNewsHits = newsBeatHits.filter((h) =>
-          surfacedUrls.has(h.url)
+        const newsDigestArticles = newsArticleRecords.map(toDigestArticle);
+        const govDigestArticles = govArticleRecords.map(toDigestArticle);
+        const summary = formatBeatDigest(newsDigestArticles, {
+          language: emailLang,
+          maxBullets: 5,
+        });
+        const govSummary = formatBeatDigest(govDigestArticles, {
+          language: emailLang,
+          maxBullets: 5,
+        });
+        const primaryDigestArticles = newsDigestArticles.length > 0
+          ? newsDigestArticles
+          : govDigestArticles;
+        const grounded = verifyPlaceNamesGrounded(
+          [summary, govSummary].filter(Boolean).join("\n"),
+          [...newsDigestArticles, ...govDigestArticles],
+          cityName,
         );
-        const successfulGovHits = govBeatHits.filter((h) =>
-          surfacedUrls.has(h.url)
-        );
-        const summary = successfulNewsHits.length > 0
-          ? await generateBeatSummary(successfulNewsHits, {
-            city: cityName,
-            language: emailLang,
-            category: "news",
-          })
-          : newsStatements.slice(0, 5).map((s) => `- ${s}`).join("\n");
-        const govSummary = successfulGovHits.length > 0
-          ? await generateBeatSummary(successfulGovHits, {
-            city: cityName,
-            language: emailLang,
-            category: "government",
-          })
-          : govStatements.slice(0, 5).map((s) => `- ${s}`).join("\n");
+        if (!grounded.ok) {
+          throw new Error(
+            `beat digest grounding failed: urls=${
+              grounded.offendingUrls.join(",") || "none"
+            } tokens=${grounded.offendingTokens.join(",") || "none"}`,
+          );
+        }
 
         const locationLabel = extractLocationLabel(scout.location);
         await markNotificationAttempted(db, runId).catch((markErr) =>
@@ -900,7 +1188,10 @@ async function execute(
           scoutName: (scout.name as string | null) ?? "Beat Scout",
           location: locationLabel,
           topic,
-          summary: summary ||
+          summary: summary || formatBeatDigest(primaryDigestArticles, {
+            language: emailLang,
+            maxBullets: 5,
+          }) ||
             insertedStatements.slice(0, 5).map((s) => `- ${s}`).join("\n"),
           articles: newsArticles.length > 0 ? newsArticles : govArticles,
           govArticles: govArticles.length > 0 ? govArticles : undefined,
@@ -1075,6 +1366,19 @@ function safeDomain(raw: string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+function toDigestArticle(
+  article: Article & { category: "news" | "government" },
+): DigestArticle {
+  const url = article.url ?? "";
+  return {
+    title: article.title || url || "Untitled",
+    url,
+    excerpt: article.summary || article.title || "",
+    domain: article.source || safeDomain(url) || "source",
+    category: article.category,
+  };
 }
 
 function extractLocationLabel(v: unknown): string | null {

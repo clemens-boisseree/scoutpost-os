@@ -161,6 +161,62 @@ Deno.test("runSearches passes Firecrawl location for location-scoped searches", 
   }
 });
 
+Deno.test("runSearches can use Exa retrieval with Beat-compatible options", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<Record<string, unknown>> = [];
+  try {
+    globalThis.fetch = ((input, init) => {
+      const body = (init as { body?: BodyInit | null } | undefined)?.body;
+      requests.push(JSON.parse(String(body ?? "{}")));
+      assertStringIncludes(String(input), "api.exa.ai/search");
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            results: [{
+              title: "Zurich procurement AI policy",
+              text:
+                "Zurich procurement officials discussed artificial intelligence.",
+              url: "https://stadt-zuerich.example/procurement-ai",
+              publishedDate: "2026-05-01T00:00:00Z",
+              highlights: ["Zurich procurement officials discussed AI."],
+            }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    }) as typeof fetch;
+    Deno.env.set("EXA_API_KEY", "exa-test");
+
+    const hits = await runSearches({
+      plan: {
+        primary_language: "de",
+        queries: ["Zurich procurement AI"],
+        discovery_queries: [],
+        local_domains: [],
+      },
+      scope: "combined",
+      category: "news",
+      sourceMode: "reliable",
+      country: "CH",
+      excludedDomains: ["youtube.com"],
+      retrievalPort: "exa",
+    });
+
+    assertEquals(requests.length, 1);
+    assertEquals(requests[0].category, "news");
+    assertEquals(requests[0].userLocation, "CH");
+    assertEquals(requests[0].excludeDomains, ["youtube.com"]);
+    assertEquals(typeof requests[0].startPublishedDate, "string");
+    const contents = requests[0].contents as Record<string, unknown>;
+    assertEquals(contents.highlights, true);
+    assertEquals(hits[0].date, "2026-05-01T00:00:00Z");
+    assertEquals(hits[0]._pass, "news");
+  } finally {
+    globalThis.fetch = originalFetch;
+    Deno.env.delete("EXA_API_KEY");
+  }
+});
+
 Deno.test("aiFilterResults backfills global topic floor only with topical candidates", async () => {
   const originalFetch = globalThis.fetch;
   try {
@@ -221,7 +277,9 @@ Deno.test("aiFilterResults rejects AI-only drift for AI journalism topic", async
       Promise.resolve(
         new Response(
           JSON.stringify({
-            candidates: [{ content: { parts: [{ text: '{"keep":[0,1,2]}' }] } }],
+            candidates: [{
+              content: { parts: [{ text: '{"keep":[0,1,2]}' }] },
+            }],
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),

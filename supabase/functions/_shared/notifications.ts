@@ -285,10 +285,57 @@ export function buildPageScoutMatchedArticles(
   }];
 }
 
+function markdownLinkedUrls(text: string | null | undefined): string[] {
+  if (!text) return [];
+  const urls: string[] = [];
+  const re = /\((https?:\/\/[^)\s]+)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) urls.push(m[1]);
+  return urls;
+}
+
+function offCardSummaryUrls(
+  summary: string | null | undefined,
+  articles: Article[],
+): string[] {
+  const cardUrls = new Set(
+    articles
+      .map((article) => article.url)
+      .filter((url): url is string =>
+        typeof url === "string" && url.length > 0
+      ),
+  );
+  return markdownLinkedUrls(summary).filter((url) => !cardUrls.has(url));
+}
+
 export async function sendBeatAlert(
   svc: SupabaseClient,
   params: BeatAlertParams,
 ): Promise<NotificationSendResult> {
+  const offCardUrls = [
+    ...offCardSummaryUrls(params.summary, params.articles),
+    ...offCardSummaryUrls(params.govSummary, params.govArticles ?? []),
+  ];
+  if (offCardUrls.length > 0) {
+    const unique = [...new Set(offCardUrls)];
+    logEvent({
+      level: "warn",
+      fn: "notifications",
+      event: "beat_summary_ungrounded",
+      scout_type: "beat",
+      user_id: params.userId,
+      run_id: params.runId,
+      msg: `summary links are absent from article cards: ${unique.join(", ")}`,
+    });
+    return {
+      ok: false,
+      reason: "summary_ungrounded",
+      error: `summary links are absent from article cards: ${
+        unique.join(", ")
+      }`,
+    };
+  }
+
   return guarded(svc, "beat", params.userId, params.runId, async (ctx) => {
     const language = params.language ?? ctx.language;
     const headerTitle = getString("beat_scout", language);
@@ -942,7 +989,7 @@ export function buildBaseHtml(p: BaseHtmlParams): string {
   const ctaSection = p.ctaText
     ? `
       <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid ${COLORS.border}; text-align: center;">
-        <a href="https://scoutpost.ai" style="color: ${accentColor}; text-decoration: none; font-size: 14px; font-family: ${FONT_BODY};">
+        <a href="https://www.scoutpost.ai" style="color: ${accentColor}; text-decoration: none; font-size: 14px; font-family: ${FONT_BODY};">
           ${escapeHtml(p.ctaText)}
         </a>
       </div>`
@@ -965,8 +1012,8 @@ export function buildBaseHtml(p: BaseHtmlParams): string {
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="${COLORS.surfaceAlt}" style="width: 100%; max-width: 640px; border: 1px solid ${COLORS.borderStrong}; background: ${COLORS.surfaceAlt};">
             <tr>
               <td bgcolor="${COLORS.surfaceAlt}" style="padding: 24px 24px 8px 24px; background: ${COLORS.surfaceAlt};">
-                <a href="https://scoutpost.ai" style="text-decoration: none; border: 0;">
-                  <img src="https://scoutpost.ai/logo-scoutpost-email@2x.png" alt="scoutpost" width="180" height="45" style="display: block; border: 0; outline: none; text-decoration: none; max-width: 100%; height: auto;" />
+                <a href="https://www.scoutpost.ai" style="text-decoration: none; border: 0;">
+                  <img src="https://www.scoutpost.ai/logo-scoutpost-email@2x.png" alt="scoutpost" width="180" height="45" style="display: block; border: 0; outline: none; text-decoration: none; max-width: 100%; height: auto;" />
                 </a>
               </td>
             </tr>

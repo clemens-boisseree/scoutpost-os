@@ -24,13 +24,20 @@ Both flows expose a source mode toggle so users can switch between niche and rel
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                  BEAT SCOUT (CURRENT v2)                         │
+│                  BEAT SCOUT (v2 + Exa canary port)               │
 │                                                                  │
 │  Trigger: pg_cron → execute-scout EF → scout-beat-execute       │
 │           OR: UI preview → POST /functions/v1/beat-search       │
 ├──────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Step 1: Query Generation (query_generator.py)                   │
+│  Step 0: Retrieval port selection                                │
+│  ├─ Default: Firecrawl-compatible legacy pipeline                │
+│  ├─ Canary: scout.metadata.retrieval = "exa"                     │
+│  ├─ Kill-switch/force: BEAT_RETRIEVAL                            │
+│  └─ A/B discovery shadow: BEAT_AB_SHADOW=1                       │
+│           │                                                      │
+│           ▼                                                      │
+│  Step 1: Query Generation                                        │
 │  ├─ LLM generates queries in local language + English            │
 │  ├─ Also returns canonical/localized query text                  │
 │  ├─ Also returns required_concepts and weak_terms for filtering  │
@@ -40,56 +47,30 @@ Both flows expose a source mode toggle so users can switch between niche and rel
 │  └─ Categories: news, government, analysis                       │
 │           │                                                      │
 │           ▼                                                      │
-│  Step 2: Direct Search (Firecrawl)                               │
-│  ├─ Execute generated queries concurrently                       │
-│  ├─ Explicit Firecrawl sources: ["web"] only                     │
-│  ├─ Forward location/country when present                        │
-│  ├─ Discovery queries also use web only                          │
-│  └─ Firecrawl filters invalid URLs and excluded domains          │
+│  Step 2: Retrieval                                               │
+│  ├─ Firecrawl default: explicit sources ["web"] only             │
+│  ├─ Exa canary: /search with category, userLocation, dates       │
+│  ├─ Persist beat_ab_runs metrics + Exa cost when available       │
+│  └─ Low-coverage Exa canaries fall back to Firecrawl             │
 │           │                                                      │
 │           ▼                                                      │
-│  Step 2.5: PDF OCR Enrichment                                    │
-│  ├─ Detect PDF URLs in results (max 3 per search)                │
-│  ├─ Scrape via Firecrawl OCR (max 5 pages per PDF)               │
-│  └─ Enrich dates, descriptions, titles from extracted text       │
-│           │                                                      │
-│           ▼                                                      │
-│  Step 3: Date Filter + Staleness Gate                            │
+│  Step 3: Legacy filter/ranking path                              │
 │  ├─ Scope-aware date windows (7d–21d depending on config)        │
-│  ├─ 90-day absolute staleness floor (no article older than 90d)  │
-│  └─ Undated cap: separate buckets for news vs discovery          │
-│           │                                                      │
-│           ▼                                                      │
-│  Step 4: Embedding Deduplication                                 │
-│  ├─ Embed each result title+description                          │
-│  ├─ Cluster by cosine similarity (threshold: 0.80)               │
-│  └─ Keep highest-scoring from each cluster                       │
-│           │                                                      │
-│           ▼                                                      │
-│  Step 5: Cluster + Tourism Filter (niche only)                   │
-│  ├─ Drop mainstream news (cluster_size >= 3)                     │
-│  └─ Drop tourism/travel content (niche+location+news category)   │
-│           │                                                      │
-│           ▼                                                      │
-│  Step 6: AI Filtering (Gemini)                                   │
+│  ├─ Undated cap, tourism filter, embedding dedup, clusters       │
 │  ├─ Filter by relevance to location/topic/criteria               │
 │  ├─ Enforce required concepts for compound topics                │
-│  ├─ Treat weak terms as insufficient alone                       │
-│  ├─ Target: 5-6 (niche) or 6-8 (reliable) articles              │
-│  ├─ Niche: HARD REJECT tourism/travel at top of prompt           │
-│  ├─ Priority: community blogs, civic groups, indie publications  │
-│  └─ Domain cap: 2/domain (niche) or 3/domain (reliable)         │
+│  └─ Target: 5-6 (niche) or 6-8 (reliable) articles              │
 │           │                                                      │
 │           ▼                                                      │
-│  Step 7: Fact-Level Deduplication (Scheduled only)               │
+│  Step 4: Fact-Level Deduplication (Scheduled only)               │
 │  ├─ Extract 1-3 atomic facts per article                         │
 │  ├─ Compare against facts from previous runs                     │
 │  └─ Return only NEW facts (not seen before)                      │
 │           │                                                      │
 │           ▼                                                      │
-│  Step 8: Summary & Notification                                  │
-│  ├─ Generate summary from new facts                              │
-│  ├─ Store EXEC# record                                           │
+│  Step 5: Extractive Digest & Notification                        │
+│  ├─ Deterministic digest from rendered article cards             │
+│  ├─ Store scout_runs + scout_run_events diagnostics              │
 │  ├─ Store atomic units in knowledge base                         │
 │  └─ Send localized email (user's preferred_language)             │
 │                                                                  │
@@ -102,8 +83,12 @@ Both flows expose a source mode toggle so users can switch between niche and rel
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `scout-beat-execute/index.ts` | `supabase/functions/` | Beat scout entrypoint. Branches on `priority_sources`: explicit → direct scrape; empty → full 8-stage pipeline. Parallel news + government category fan-out when criteria + location are both set. Two-section email (news + gov) via `sendBeatAlert`. |
-| `_shared/beat_pipeline.ts` | `supabase/functions/` | Authoritative pipeline: `generateQueries` (LLM multilingual query plan, canonical/localized query, required concepts, weak terms), `runSearches` (explicit Firecrawl `sources: ["web"]` only), `applyDateFilter` + `capUndatedResults` (14/28/90d windows + two-bucket caps), `isLikelyTourismContent` (niche+location+news-category prefilter), `dedupeByEmbedding` (cosine + rarity + +8 local-language bonus), `clusterFilter` (niche only), `aiFilterResults` (LLM relevance gate with compound-topic strictness), `generateBeatSummary` (bulleted email summary). |
+| `scout-beat-execute/index.ts` | `supabase/functions/` | Beat scout entrypoint. Branches on `priority_sources`: explicit → direct scrape; empty → retrieval pipeline. Resolves Firecrawl vs Exa, logs `beat_ab_runs`, handles low-coverage Exa fallback, extracts units, and sends deterministic extractive digest email. |
+| `_shared/beat_pipeline.ts` | `supabase/functions/` | Public facade for Beat discovery helpers. Kept intentionally small so downstream imports stay stable during Exa migration. |
+| `_shared/beat_pipeline_legacy.ts` | `supabase/functions/` | Current Firecrawl-compatible 8-stage implementation: query gen, search fan-out, date/undated caps, tourism filter, embedding dedup, cluster filter, AI relevance filter. This is the Phase 5 deletion target after Exa live proof. |
+| `_shared/exa.ts` | `supabase/functions/` | Exa `/search` client and retrieval-port helpers. Preserves `SearchHit` shape plus Exa metadata/cost for canary logging. |
+| `_shared/beat_ab_logger.ts` | `supabase/functions/` | Writes `beat_ab_runs`, computes raw/dated/final/locality/freshness metrics, and promotes repeated low-coverage Exa canaries back to Firecrawl. |
+| `_shared/extractive_summary.ts` | `supabase/functions/` | Deterministic Beat email digest renderer and grounding checks. No LLM calls. |
 | `beat-search/index.ts` | `supabase/functions/` | Preview endpoint — synchronous version of the pipeline for the New Scout modal's "Start Search" button. No credit charge, no persistence. |
 
 ### Legacy (v1 FastAPI) — for reference during cutover only
@@ -126,7 +111,7 @@ The v2 port preserves all 8 pipeline stages with these clarifications:
 - **Stage 1 (query gen):** Gemini 2.5 Flash-Lite via Google direct API (legacy used OpenRouter). Schema-constrained output. Caching not yet ported — v1 kept a 24h in-memory query cache with TTL.
 - **Stage 5 (tourism pre-filter):** identical 11-domain + 6-title pattern list.
 - **Stage 6 (embedding dedup):** scope-aware thresholds preserved (combined 0.85 / location 0.82 / topic 0.80). The `+8` local-language bonus is approximated via a charset heuristic (`/[À-ÿ]/`) instead of `langdetect`, to avoid shipping a heavy ML model in the Edge runtime. Slight precision loss on non-Latin scripts (JP/KR/ZH); flagged as a follow-up if needed.
-- **Stage 9 (email summary):** LLM-composed bulletin per category. When the user supplied explicit `priority_sources`, falls back to a plain bulleted statement list.
+- **Email digest:** Generative Beat summary composition is removed from the production notification path. Digest text is deterministic and built from the same article cards rendered in the email; summary links outside those cards are rejected.
 - **Credit:** 7 credits per run unchanged from legacy. Refunded via `refund_credits` RPC when the pipeline yields 0 URLs or the run errors.
 
 ## Deduplication Mechanisms
@@ -142,13 +127,6 @@ The v2 port preserves all 8 pipeline stages with these clarifications:
 - **Homepage/index rejection**: bare `/`, `/blog`, `/news` etc. are dropped (`is_index_or_homepage`)
 - **Standing page rejection**: institutional/section pages with short paths and no numeric IDs (`is_likely_standing_page`) — catches gov landing pages, stats dashboards, agenda indexes
 - Removes exact duplicate URLs from multiple queries
-
-### Layer 1.5: PDF OCR Enrichment
-- Detects PDF URLs in search results (max 3 per search)
-- Scrapes via Firecrawl `/v2/scrape` with `parsers: [{"type": "pdf", "mode": "auto"}]`
-- Extracts dates from PDF metadata or text content (multi-language regex patterns)
-- Replaces empty/short descriptions with extracted text
-- Cost: 1 Firecrawl credit per PDF page (max 5 pages per PDF)
 
 ### Layer 2: Embedding Deduplication (0.80 threshold)
 - Embeds article title + description
@@ -169,7 +147,7 @@ When multiple articles cover the same story, the system picks the best one using
 | **Language match** | +8 | Article language matches locale (non-English only) |
 | Description length | +0-3 | Longer descriptions slightly preferred |
 
-**Language detection:** Uses `langdetect` library to detect article language from title + description. For non-English locales (e.g., Montreal → French, Zurich → German), articles in the local language get +8 bonus, ensuring they win over English articles covering the same story.
+**Language scoring:** The Edge runtime uses a lightweight charset heuristic for the local-language bonus instead of the old Python `langdetect` dependency. This preserves the scoring shape without shipping a heavy language model into Edge Functions.
 
 ### Layer 2.5: Cluster + Tourism Filter (niche only)
 - **Cluster filter**: drops mainstream news articles with cluster_size >= 3
@@ -192,12 +170,30 @@ When multiple articles cover the same story, the system picks the best one using
 
 ## Source Modes
 
-Source mode changes ranking, filtering, and target count. It does **not** change the default Firecrawl source set; both modes use explicit web search.
+Source mode changes ranking, filtering, target count, and Exa category mapping. It does **not** change the default Firecrawl source set; both modes use explicit web search while Firecrawl remains the default retrieval port.
 
-| Mode | Retrieval source | Discovery | Date Window | AI Target | Domain Cap |
-|------|---------|-----------|-------------|-----------|------------|
-| **niche** | web only | LLM-generated discovery queries | 14d (28d fallback) | 5-6 | 2/domain |
-| **reliable** | web only | Limited discovery, depending on generated query plan | 14d (28d fallback) | 6-8 | 3/domain |
+| Mode | Firecrawl source | Exa category | Discovery | Date Window | AI Target | Domain Cap |
+|---|---|---|---|---|---|---|
+| **niche** | web only | `personal site` | LLM-generated discovery queries | 14d (28d fallback) | 5-6 | 2/domain |
+| **reliable** | web only | `news` | Limited discovery, depending on generated query plan | 14d (28d fallback) | 6-8 | 3/domain |
+
+## Retrieval Port
+
+Firecrawl remains the default for existing Beat scouts. Exa `/search` is wired
+as a canary retrieval port:
+
+| Control | Effect |
+|---|---|
+| `scouts.metadata.retrieval = "exa"` | Run this scout through Exa retrieval unless the global env overrides it. |
+| `scouts.metadata.retrieval = "firecrawl"` | Force this scout to the Firecrawl-compatible legacy path. |
+| `BEAT_RETRIEVAL=exa` | Force all Beat scouts to Exa. Disables low-coverage fallback for the run. |
+| `BEAT_RETRIEVAL=firecrawl` | Global kill switch back to Firecrawl. |
+| `BEAT_AB_SHADOW=1` or `scouts.metadata.beat_ab_shadow=true` | Run the alternate port through discovery/filtering only and write a `beat_ab_runs` shadow row. |
+| `scouts.metadata.exa_fallback=false` | Disable per-scout low-coverage fallback during a canary. |
+
+Low-coverage Exa canaries (`final candidates < 2`) log the Exa row, execute
+the current run through Firecrawl, and after three consecutive low-coverage Exa
+rows update `scouts.metadata.retrieval` to `"firecrawl"`.
 
 ## Search Relevance Guardrails
 
@@ -246,26 +242,34 @@ in the local language, replacing previous hardcoded translation tables.
 | Mode | Dedup | Notifications | Credits | Units |
 |------|-------|---------------|---------|-------|
 | **Preview** (UI search) | URL + embedding only | Never | Not charged | Not stored |
-| **Scheduled** (Lambda) | All 3 layers | Always sent | Charged | Stored |
+| **Scheduled** (Edge Function) | All 3 layers | When new units surface | Charged | Stored |
 
 ## Database Records
 
-### EXEC# Records
-```
-PK: user_xxx
-SK: EXEC#{scout_name}#{timestamp_ms}#{exec_id}
-Fields: summary_text (from new facts only), is_duplicate
-TTL: 90 days
-```
+### `scout_runs` and `scout_run_events`
+
+Beat execution state is stored in `scout_runs`, with timeline diagnostics in
+`scout_run_events`. `scout runs show <run_id>` exposes the run row, stage
+events, source counts, notification state, merged units, and retrieval metadata.
+
+### `beat_ab_runs`
+
+Canary retrieval evidence is stored in `beat_ab_runs`:
+
+| Field | Meaning |
+|---|---|
+| `retrieval` | `firecrawl` or `exa` |
+| `raw_hit_count` / `dated_hit_count` / `final_hit_count` | Retrieval quality counters |
+| `locality_score` / `freshness_score` | Deterministic scoring for canary comparison |
+| `total_cost_dollars` | Exa response cost when provided |
+| `metadata.shadow` | `true` when row was produced by discovery-only A/B shadow |
+| `metadata.fallback_reason` | e.g. `exa_low_coverage` |
 
 ### Information Units
-```
-Table: information-units
-PK: USER#{user_id}#LOC#{country}#{state}#{city}
-SK: UNIT#{timestamp_ms}#{unit_id}
-Fields: statement, unit_type, entities[], source_url, embedding_compressed
-TTL: 90 days (extended on use)
-```
+
+Canonical facts live in `information_units` and per-run/source sightings live
+in `unit_occurrences`. Beat writes source URLs, source titles/domains, run IDs,
+and canonical-unit merge data through `_shared/unit_dedup.ts`.
 
 ## Credit Cost
 
@@ -283,6 +287,8 @@ deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts
 deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts --scout-id <existing-beat-scout-uuid>
 deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts --timeout-min 8
 deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts --scenario ai-journalism --timeout-min 10 --verbose
+COJO_LIVE_BENCHMARK=1 COJO_ALLOW_PROD_FIRECRAWL=1 \
+  deno run --allow-env --allow-net scripts/exa-vs-firecrawl-coverage.ts
 ```
 
 The default run checks six canaries (location-only, two topic-only, topic+country,

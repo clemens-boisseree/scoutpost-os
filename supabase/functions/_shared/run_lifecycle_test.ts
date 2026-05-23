@@ -78,6 +78,8 @@ Deno.test("markRunSuccess mirrors diagnostic counts into legacy count columns", 
     unitsMerged: 2,
     criteriaStatus: true,
     notificationStatus: "pending",
+    sourcesScraped: 4,
+    sourcesFailed: 1,
   });
   const values = fake.updates[0].values;
   assertEquals(values.status, "success");
@@ -86,6 +88,8 @@ Deno.test("markRunSuccess mirrors diagnostic counts into legacy count columns", 
   assertEquals(values.merged_existing_count, 2);
   assertEquals(values.units_created_count, 3);
   assertEquals(values.units_merged_count, 2);
+  assertEquals(values.sources_scraped, 4);
+  assertEquals(values.sources_failed, 1);
   assertEquals(values.notification_status, "pending");
   assertEquals(values.error_class, null);
   assertEquals(fake.events[0].values.status, "success");
@@ -93,6 +97,8 @@ Deno.test("markRunSuccess mirrors diagnostic counts into legacy count columns", 
   assertEquals(fake.events[0].values.metadata, {
     units_created_count: 3,
     units_merged_count: 2,
+    sources_scraped: 4,
+    sources_failed: 1,
     criteria_status: true,
   });
 });

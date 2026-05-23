@@ -18,6 +18,7 @@ import {
   groupFactsBySource,
   markdownToHtml,
   renderArticleCards,
+  sendBeatAlert,
 } from "./notifications.ts";
 import {
   EMAIL_STRINGS,
@@ -457,6 +458,24 @@ Deno.test("Beat Scout renders editorial digest section plus government section",
   assertStringIncludes(html, "ZURICH, CH");
   assertStringIncludes(html, 'href="https://a.example/1"');
   assertStringIncludes(html, 'href="https://c.example/3"');
+});
+
+Deno.test("Beat Scout notification rejects summary links outside article cards", async () => {
+  const result = await sendBeatAlert({} as never, {
+    userId: "user-1",
+    scoutId: "scout-1",
+    runId: "run-1",
+    scoutName: "Beat",
+    summary: "- Item ([source](https://outside.example/story))",
+    articles: [{
+      title: "Inside story",
+      url: "https://inside.example/story",
+      summary: "Inside excerpt",
+    }],
+  });
+  assertEquals(result.ok, false);
+  assertEquals(result.reason, "summary_ungrounded");
+  assertStringIncludes(result.error ?? "", "https://outside.example/story");
 });
 
 Deno.test("Civic Scout renders markdown promises with the civic cue", () => {

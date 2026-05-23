@@ -20,6 +20,7 @@ export interface UnitSourceRef {
   url: string | null;
   title: string | null;
   domain: string | null;
+  discovered_from_url: string | null;
   extracted_at: string | null;
 }
 
@@ -48,6 +49,7 @@ export interface UnitResponse {
     url: string | null;
     title: string | null;
     domain: string | null;
+    discovered_from_url: string | null;
   };
   sources: UnitSourceRef[];
   linked_scouts: LinkedScoutRef[];
@@ -91,6 +93,7 @@ interface RawUnitRow {
   source_url?: string | null;
   source_title?: string | null;
   source_domain?: string | null;
+  discovered_from_url?: string | null;
   occurrence_count?: number | null;
   entities?: string[] | null;
   verified?: boolean | null;
@@ -118,7 +121,7 @@ export async function shapeUnitResponse(
     db
       .from("unit_occurrences")
       .select(
-        "scout_id, source_url, source_title, source_domain, extracted_at, scouts(id, name, type)",
+        "scout_id, source_url, source_title, source_domain, discovered_from_url, extracted_at, scouts(id, name, type)",
       )
       .eq("unit_id", row.id)
       .order("extracted_at", { ascending: false }),
@@ -156,6 +159,7 @@ export async function shapeUnitResponse(
       source_url?: string | null;
       source_title?: string | null;
       source_domain?: string | null;
+      discovered_from_url?: string | null;
       extracted_at?: string | null;
       scouts?:
         | { id?: string | null; name?: string | null; type?: string | null }
@@ -170,6 +174,7 @@ export async function shapeUnitResponse(
       occurrence.source_url ?? "",
       occurrence.source_title ?? "",
       occurrence.source_domain ?? "",
+      occurrence.discovered_from_url ?? "",
     ].join("|");
     if (!seenSources.has(sourceKey)) {
       seenSources.add(sourceKey);
@@ -177,6 +182,7 @@ export async function shapeUnitResponse(
         url: occurrence.source_url ?? null,
         title: occurrence.source_title ?? null,
         domain: occurrence.source_domain ?? null,
+        discovered_from_url: occurrence.discovered_from_url ?? null,
         extracted_at: occurrence.extracted_at ?? null,
       });
     }
@@ -199,6 +205,7 @@ export async function shapeUnitResponse(
     url: row.source_url ?? null,
     title: row.source_title ?? null,
     domain: row.source_domain ?? null,
+    discovered_from_url: row.discovered_from_url ?? null,
     extracted_at: row.last_seen_at ?? row.extracted_at ?? null,
   };
   const primaryScout = linkedScouts[0] ?? {
@@ -233,6 +240,7 @@ export async function shapeUnitResponse(
       url: primarySource.url,
       title: primarySource.title,
       domain: primarySource.domain,
+      discovered_from_url: primarySource.discovered_from_url,
     },
     sources,
     linked_scouts: linkedScouts,
@@ -289,8 +297,18 @@ export interface ScoutResponse {
   last_run: {
     started_at: string | null;
     status: string | null;
+    stage: string | null;
     articles_count: number | null;
     merged_existing_count: number | null;
+    sources_scraped: number | null;
+    sources_failed: number | null;
+    units_created_count: number | null;
+    units_merged_count: number | null;
+    error_class: string | null;
+    notification_status: string | null;
+    notification_reason: string | null;
+    notification_provider_id: string | null;
+    metadata: Record<string, unknown> | null;
   } | null;
   created_at: string | null;
 }
@@ -327,7 +345,9 @@ export async function shapeScoutResponse(
 ): Promise<ScoutResponse> {
   const { data: lastRun } = await db
     .from("scout_runs")
-    .select("started_at, status, articles_count, merged_existing_count")
+    .select(
+      "started_at, status, stage, articles_count, merged_existing_count, sources_scraped, sources_failed, units_created_count, units_merged_count, error_class, notification_status, notification_reason, notification_provider_id, metadata",
+    )
     .eq("scout_id", row.id)
     .order("started_at", { ascending: false })
     .limit(1)
@@ -360,11 +380,31 @@ export async function shapeScoutResponse(
       ? {
         started_at: (lastRun as { started_at: string | null }).started_at,
         status: (lastRun as { status: string | null }).status,
+        stage: (lastRun as { stage: string | null }).stage ?? null,
         articles_count:
           (lastRun as { articles_count: number | null }).articles_count,
         merged_existing_count:
           (lastRun as { merged_existing_count: number | null })
             .merged_existing_count,
+        sources_scraped: (lastRun as { sources_scraped: number | null })
+          .sources_scraped ?? null,
+        sources_failed: (lastRun as { sources_failed: number | null })
+          .sources_failed ?? null,
+        units_created_count: (lastRun as { units_created_count: number | null })
+          .units_created_count ?? null,
+        units_merged_count: (lastRun as { units_merged_count: number | null })
+          .units_merged_count ?? null,
+        error_class: (lastRun as { error_class: string | null }).error_class ??
+          null,
+        notification_status: (lastRun as { notification_status: string | null })
+          .notification_status ?? null,
+        notification_reason: (lastRun as { notification_reason: string | null })
+          .notification_reason ?? null,
+        notification_provider_id:
+          (lastRun as { notification_provider_id: string | null })
+            .notification_provider_id ?? null,
+        metadata: (lastRun as { metadata?: Record<string, unknown> | null })
+          .metadata ?? null,
       }
       : null,
     created_at: row.created_at ?? null,
