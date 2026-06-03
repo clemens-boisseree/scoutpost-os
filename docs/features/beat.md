@@ -206,18 +206,7 @@ The production default is intentionally simpler than the earlier fan-out design:
 - For compound topics, the AI filter must require all major concepts. A result matching only a weak generic term such as `AI`, `policy`, `technology`, or `media` is not enough.
 - Measure quality by relevance/locality/manual review, not by result count alone.
 
-The regression that motivated this rule: a topic-only Beat Scout for `AI in journalism` returned broad AI stories about the Pentagon, Oscars rules, school boards, and city councils. Those results matched generic `AI` terms but not the journalism/newsroom concept. The fix is covered by the live benchmark canary `topic-only:ai-journalism`.
-
-Audit evidence lives in `docs/benchmarks/beat-scout-search-audit-2026-05-02.md`. Summary:
-
-| Permutation | LLM pass | Warn | Fail | Conclusion |
-|---|---:|---:|---:|---|
-| `default` | 13 | 0 | 0 | Equivalent to explicit web in audit context |
-| `web` | 13 | 0 | 0 | Production default |
-| `news` | 5 | 5 | 3 | Do not use as default |
-| `web+news` | 10 | 3 | 0 | Better than news alone, still dilutes locality/relevance |
-| `recent-web` | 6 | 6 | 1 | Unstable; often pulls social/wrong-locality items |
-| `recent-web+news` | 5 | 7 | 1 | Unstable |
+The regression that motivated this rule: a topic-only Beat Scout for `AI in journalism` returned broad AI stories about the Pentagon, Oscars rules, school boards, and city councils. Those results matched generic `AI` terms but not the journalism/newsroom concept. The fix is covered by the live benchmark canary `topic-only:ai-journalism`; ongoing coverage lives in `docs/supabase/benchmarks.md` and `scripts/benchmarks/`.
 
 Future experiments may reintroduce `news` only as a separately ranked freshness lane with its own relevance gate and audit evidence. It should not be blindly merged into the default result set.
 
@@ -283,10 +272,10 @@ and canonical-unit merge data through `_shared/unit_dedup.ts`.
 Run the Supabase-era Beat health benchmark to exercise the real discovery path:
 
 ```bash
-deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts
-deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts --scout-id <existing-beat-scout-uuid>
-deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts --timeout-min 8
-deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts --scenario ai-journalism --timeout-min 10 --verbose
+deno run --allow-env --allow-net --allow-read=. scripts/benchmarks/benchmark-beat.ts
+deno run --allow-env --allow-net --allow-read=. scripts/benchmarks/benchmark-beat.ts --scout-id <existing-beat-scout-uuid>
+deno run --allow-env --allow-net --allow-read=. scripts/benchmarks/benchmark-beat.ts --timeout-min 8
+deno run --allow-env --allow-net --allow-read=. scripts/benchmarks/benchmark-beat.ts --scenario ai-journalism --timeout-min 10 --verbose
 ```
 
 The default run checks six canaries (location-only, two topic-only, topic+country,

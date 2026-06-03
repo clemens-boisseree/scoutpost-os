@@ -171,4 +171,5 @@ Stores run lifecycle, stage, notification, and diagnostic fields.
 
 ## Related Docs
 
-- `docs/specs/web-scout-canonical-hash-change-detection.md`
+- `docs/supabase/edge-functions.md`
+- `docs/supabase/scouts-runs.md`

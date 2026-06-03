@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     apify_api_token: str = os.getenv("APIFY_API_TOKEN", "")
 
     # LLM model — Gemini models (gemini-*) route to Google AI direct API,
-    # all others route to OpenRouter. See docs/benchmarks/ for model comparison.
+    # all others route to OpenRouter. 
     llm_model: str = os.getenv("LLM_MODEL", "gemini-2.5-flash-lite")
 
     # Scout service settings

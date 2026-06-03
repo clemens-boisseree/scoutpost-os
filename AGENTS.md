@@ -149,7 +149,7 @@ cd frontend && npm test
 cd backend && python3 -m pytest tests/unit/ -v
 cd backend && python3 -m pytest tests/unit/api/test_local_auth.py -v
 cd backend && python3 -m pytest tests/unit/api/test_muckrock_proxy.py -v
-bash scripts/strip-oss.sh   # in throwaway copy/worktree
+bash scripts/ops/strip-oss.sh   # in throwaway copy/worktree
 ```
 
 Also confirm manually:
@@ -369,7 +369,7 @@ See `backend/tests/AGENTS.md` and `frontend/src/tests/AGENTS.md` for details.
 
 **OSS mirror check — required when adding SaaS-only files or routes:**
 
-This project ships an OSS mirror via `scripts/strip-oss.sh`. When you add any of the following, you MUST update `strip-oss.sh` to exclude it from the mirror:
+This project ships an OSS mirror via `scripts/ops/strip-oss.sh`. When you add any of the following, you MUST update `scripts/ops/strip-oss.sh` to exclude it from the mirror:
 
 - New backend routers, services, or schemas that are SaaS-only (admin, billing, MuckRock, Linear)
 - New frontend routes that are SaaS-only (`/admin`, `/pricing`, `/terms`)
@@ -378,7 +378,7 @@ This project ships an OSS mirror via `scripts/strip-oss.sh`. When you add any of
 
 **Verify before pushing:**
 ```bash
-bash scripts/strip-oss.sh  # Run in a throwaway worktree or after git stash
+bash scripts/ops/strip-oss.sh  # Run in a throwaway worktree or after git stash
 ```
 CI also runs this validation (`OSS mirror validation` check), but catching it locally is faster.
 

@@ -36,6 +36,3 @@ langdetect==1.0.9
 asyncpg>=0.31.0
 # Supabase Python client (async admin API for auth.users email lookup)
 supabase>=2.0.0
-
-# YAML parsing (AgentSPEX agent definitions)
-PyYAML>=6.0.3

@@ -10,7 +10,7 @@ This document replaces the older pre-cutover design that described a long-term A
 2. Same core scout types as hosted Scoutpost: Page, Beat/Location, Social, Civic.
 3. Agent-compatible surfaces: UI, `scout` CLI, REST/Edge Functions, and MCP.
 4. Docker installer path that keeps newsroom credentials local.
-5. Optional automation/support licensing that never gates application features.
+5. Optional self-hosting/support licensing that never gates application features.
 
 ## Repository Topology
 
@@ -19,7 +19,7 @@ This document replaces the older pre-cutover design that described a long-term A
 | `buriedsignals/scoutpost` | Private | Main development, SaaS-specific code, CI, release automation. |
 | `buriedsignals/scoutpost-os` | Public | OSS mirror after SaaS-only code and private workflows are stripped. |
 
-The mirror pipeline is implemented by `scripts/strip-oss.sh` and `.github/workflows/mirror-oss.yml`. Any new SaaS-only route, component, workflow, or secret-bearing file must be excluded there.
+The mirror pipeline is implemented by `scripts/ops/strip-oss.sh` and `.github/workflows/mirror-oss.yml`. Any new SaaS-only route, component, workflow, or secret-bearing file must be excluded there.
 
 ## Runtime Stack
 
@@ -104,7 +104,7 @@ Any feature exposed in the UI should be considered for CLI/MCP parity when it is
 
 ## Licensing Boundary
 
-The Sustainable Use License governs the public repo. License keys, where used, gate automation/support convenience and not application capabilities. See `docs/oss/license-key.md`.
+The Sustainable Use License governs the public repo. License keys, where used, gate self-hosting/support convenience and not application capabilities. See `docs/oss/license-key.md`.
 
 ## Historical Migration Notes
 

@@ -25,7 +25,7 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
-COPY automation/docker-install-entrypoint.sh /usr/local/bin/scoutpost-installer
+COPY selfhost/docker-install-entrypoint.sh /usr/local/bin/scoutpost-installer
 
 WORKDIR /workspace
 ENTRYPOINT ["scoutpost-installer"]

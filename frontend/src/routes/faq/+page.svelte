@@ -80,7 +80,7 @@
 					<summary class="faq-question">How do I deploy Scoutpost on my own infrastructure?</summary>
 					<div class="faq-answer">
 						<p>The GitHub repo ships with an <strong>automated setup flow</strong>. Drop any AI coding agent (Claude Code, Cursor, Codex, etc.) into the repo, invoke the setup skill, and it provisions everything end-to-end: a fresh Supabase project, the edge functions, and the frontend.</p>
-						<p>Manual deployment is also documented in <code>automation/SETUP_AGENT.md</code> and <code>deploy/SETUP.md</code> — nothing is gated.</p>
+						<p>Manual deployment is also documented in <code>selfhost/SETUP_AGENT.md</code> and <code>deploy/SETUP.md</code> — nothing is gated.</p>
 					</div>
 				</details>
 

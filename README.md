@@ -51,7 +51,7 @@ cd cli && deno task run --help
 ### Environment Variables
 
 Copy `.env.example` to `.env` and fill in the values. See
-`docs/architecture/api-surface-audit.md` for the current set of
+`docs/architecture/api-surface.md` for the current set of
 load-bearing variables.
 
 ## Deployment
@@ -67,7 +67,7 @@ before merge.
 ## Documentation
 
 - [Newsroom Docker install](docs/oss/newsroom-docker-install.md)
-- [API surface audit (post-cutover)](docs/architecture/api-surface-audit.md)
+- [API surface (post-cutover)](docs/architecture/api-surface.md)
 - [FastAPI endpoints (legacy + auth + v1)](docs/architecture/fastapi-endpoints.md)
 - [Supabase Edge Functions](docs/supabase/edge-functions.md)
 - [Developer guide](docs/architecture/developer-guide.md)

@@ -52,7 +52,7 @@ docs/
 │   ├── edge-functions.md                  # Legacy: superseded by docs/supabase/edge-functions.md
 │   ├── license-key.md                     # License key format, validation
 │   ├── deployment-and-mirror.md           # Docker, Render, GitHub mirror CI
-│   └── automation.md                      # setup.sh, sync-upstream, agent instructions
+│   └── self-hosting-automation.md         # setup.sh, sync-upstream, agent instructions
 ├── muckrock/                              # MuckRock integration (auth + billing)
 │   ├── oauth-integration.md               # OpenID flow, scopes, session cookies
 │   ├── userinfo-and-orgs.md               # Userinfo schema, org structure
@@ -60,8 +60,7 @@ docs/
 │   ├── plans-and-entitlements.md          # Tier definitions (Free/Pro/Team), credit costs
 │   ├── entitlements-pro-design.md         # Pro tier design: resolution, pricing, webhooks
 │   └── entitlements-team-design.md        # Team plan: shared credit pools, ORG# records, seats
-├── benchmarks/                            # LLM model benchmarks
-└── research/                              # LLM model research
+└── operations/                            # Current operator runbooks only
 ```
 
 ## Key Documentation by Topic
@@ -87,7 +86,7 @@ docs/
 - **Edge Functions**: `oss/edge-functions.md` - Supabase Edge Function reference
 - **License Key**: `oss/license-key.md` - legacy/private validation design; public setup does not require license keys
 - **Deployment & Mirror**: `oss/deployment-and-mirror.md` - Docker, Render, GitHub mirror CI
-- **Automation**: `oss/automation.md` - setup.sh, sync-upstream, agent instructions
+- **Self-hosting automation**: `oss/self-hosting-automation.md` - setup.sh, sync-upstream, agent instructions
 
 ### MCP (remote MCP server)
 - **Index**: `mcp/README.md` — what's in `docs/mcp/`, surface area, related docs

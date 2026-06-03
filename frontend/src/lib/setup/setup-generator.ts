@@ -295,7 +295,7 @@ export function buildAgentManifestPrompt(
     "For Supabase Cloud, use the manifest supabase.access_token for non-interactive Supabase CLI authentication. Do not run browser login inside Docker.",
     "Do not print, summarize, cat, or paste secret values from the manifest. It is acceptable to report missing field names and redacted previews only.",
     "Install the upstream sync workflow by default so this fork can receive Scoutpost OSS maintenance updates.",
-    "After setup, run the Docker doctor path or automation/selfhost-doctor.sh, verify .github/workflows/sync-upstream.yml exists, and tell the operator which GitHub secrets are available for maintenance reporting.",
+    "After setup, run the Docker doctor path or selfhost/selfhost-doctor.sh, verify .github/workflows/sync-upstream.yml exists, and tell the operator which GitHub secrets are available for maintenance reporting.",
     "For future downstream updates, use the Docker installer update command from the same mounted repository so the update PR is prepared in a repeatable operator environment.",
     "Use the Supabase project URL, API base, MCP URL, and skill URL from the manifest-generated deployment only.",
     "Do not connect CLI, MCP, or REST clients to scoutpost.ai unless the manifest explicitly says this is the hosted SaaS.",
@@ -578,8 +578,8 @@ if ! command -v git >/dev/null 2>&1; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/automation/setup-from-manifest.sh" ]; then
-  bash "$SCRIPT_DIR/automation/setup-from-manifest.sh" "$MANIFEST_PATH"
+if [ -f "$SCRIPT_DIR/selfhost/setup-from-manifest.sh" ]; then
+  bash "$SCRIPT_DIR/selfhost/setup-from-manifest.sh" "$MANIFEST_PATH"
   exit 0
 fi
 
@@ -595,7 +595,7 @@ else
   git -C "$REPO_DIR" checkout master
 fi
 
-bash "$REPO_DIR/automation/setup-from-manifest.sh" "$MANIFEST_PATH"
+bash "$REPO_DIR/selfhost/setup-from-manifest.sh" "$MANIFEST_PATH"
 `;
 }
 

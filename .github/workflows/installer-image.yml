@@ -7,7 +7,7 @@ on:
       - master
     paths:
       - deploy/installer/Dockerfile
-      - automation/docker-install-entrypoint.sh
+      - selfhost/docker-install-entrypoint.sh
       - .github/workflows/installer-image.yml
   workflow_dispatch:
 

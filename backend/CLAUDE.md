@@ -18,7 +18,7 @@ Read the nearest parent `CLAUDE.md` / `AGENTS.md` before editing; its session pr
 | `v1.py` | `/api/v1/*` | Public REST API (CLI auth via Bearer `cj_...` API key). | No |
 | `threat_modeling/` | `/api/threat-modeling/*` | Internal threat-assessment dashboard. | Yes |
 
-SaaS-only routers are stripped from the OSS mirror by `scripts/strip-oss.sh`.
+SaaS-only routers are stripped from the OSS mirror by `scripts/ops/strip-oss.sh`.
 When adding a SaaS-only router or service you MUST update `strip-oss.sh`.
 
 ## Live services (`backend/app/services/*`)
@@ -115,7 +115,7 @@ See `backend/tests/CLAUDE.md` for layout and mocking conventions.
 
 ## See also
 
-- `docs/architecture/api-surface-audit.md` — authoritative post-cutover HTTP surface
+- `docs/architecture/api-surface.md` — authoritative post-cutover HTTP surface
 - `docs/supabase/architecture-overview.md` — who-calls-what diagram for the EF side
 - `docs/supabase/edge-functions.md` — every Edge Function
 - `docs/oss/adapter-pattern.md` — port/adapter design (with post-cutover banner)

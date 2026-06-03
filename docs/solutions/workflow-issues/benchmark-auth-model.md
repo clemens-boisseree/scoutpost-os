@@ -30,14 +30,14 @@ Use four categories and keep them separate:
 
 | Category | Purpose | Representative files | Auth model |
 | --- | --- | --- | --- |
-| Scout health benchmarks | End-to-end health for Page, Beat, Civic, and Social scouts | `scripts/benchmark-scout-suite.ts`, `scripts/benchmark-web.ts`, `scripts/benchmark-beat.ts`, `scripts/benchmark-civic.ts`, `scripts/benchmark-social.ts`, `.github/workflows/weekly-scout-benchmarks.yml` | Benchmark owner resolved through Supabase Auth Admin, temporary user session for Edge Function calls |
-| Internal worker smoke | Verify service-only functions reject missing/bad auth and accept valid internal service auth | `scripts/benchmark-internal-workers.ts` | `INTERNAL_SERVICE_KEY` plus Supabase target secrets |
-| Offline QA matrix | Deterministic regression coverage that runs in CI without provider spend | `scripts/benchmark-qa-matrix.ts`, `.github/workflows/qa-matrix.yml` | No live Supabase user session required for the offline path |
+| Scout health benchmarks | End-to-end health for Page, Beat, Civic, and Social scouts | `scripts/benchmarks/benchmark-scout-suite.ts`, `scripts/benchmarks/benchmark-web.ts`, `scripts/benchmarks/benchmark-beat.ts`, `scripts/benchmarks/benchmark-civic.ts`, `scripts/benchmarks/benchmark-social.ts`, `.github/workflows/weekly-scout-benchmarks.yml` | Benchmark owner resolved through Supabase Auth Admin, temporary user session for Edge Function calls |
+| Internal worker smoke | Verify service-only functions reject missing/bad auth and accept valid internal service auth | `scripts/benchmarks/benchmark-internal-workers.ts` | `INTERNAL_SERVICE_KEY` plus Supabase target secrets |
+| Offline QA matrix | Deterministic regression coverage that runs in CI without provider spend | `scripts/benchmarks/benchmark-qa-matrix.ts`, `.github/workflows/qa-matrix.yml` | No live Supabase user session required for the offline path |
 | OSS Docker/open setup validation | Prove the open setup boots, migrates, serves functions, and supports minimal CLI/API use | `docs/oss/newsroom-docker-install.md`, external `scoutpost-os` workflow | Local/self-hosted Supabase setup |
 
 Do not reintroduce separate weekly benchmark jobs for `page-subpage` or `apify-actors` as scout-type benchmarks. Page subpage following belongs inside the Page Scout benchmark as a canary. Social actor preview health belongs behind the deployed `/functions/v1/social-test` diagnostic because the deployed function owns Apify credentials and normalization.
 
-Beat benchmark coverage must include Exa. The live Beat benchmark should fail if the deployed run never requests Exa, while still allowing Firecrawl fallback after low-coverage Exa detection. The current assertion is documented in `docs/supabase/benchmarks.md` and implemented in `scripts/benchmark-beat.ts`.
+Beat benchmark coverage must include Exa. The live Beat benchmark should fail if the deployed run never requests Exa, while still allowing Firecrawl fallback after low-coverage Exa detection. The current assertion is documented in `docs/supabase/benchmarks.md` and implemented in `scripts/benchmarks/benchmark-beat.ts`.
 
 ## Why This Matters
 
@@ -51,7 +51,7 @@ Keeping the categories separate also clarifies secret ownership:
 
 ## When to Apply
 
-- Adding or editing any file named `scripts/benchmark-*.ts`.
+- Adding or editing any file named `scripts/benchmarks/benchmark-*.ts`.
 - Editing `.github/workflows/weekly-scout-benchmarks.yml` or `.github/workflows/qa-matrix.yml`.
 - Investigating historical benchmark issues such as failed Page, Beat, Civic, Social, page-subpage, or apify-actors runs.
 - Deciding whether a new diagnostic should run locally before PRs, weekly in GitHub, or only manually.
@@ -64,21 +64,21 @@ Correct weekly Scout health shape:
 matrix:
   include:
     - name: page
-      command: deno run --allow-env --allow-net --allow-read=. scripts/benchmark-web.ts
+      command: deno run --allow-env --allow-net --allow-read=. scripts/benchmarks/benchmark-web.ts
     - name: beat
-      command: deno run --allow-env --allow-net --allow-read=. scripts/benchmark-beat.ts
+      command: deno run --allow-env --allow-net --allow-read=. scripts/benchmarks/benchmark-beat.ts
     - name: civic
-      command: deno run --allow-env --allow-net --allow-read=. --allow-write=scripts/reports scripts/benchmark-civic.ts
+      command: deno run --allow-env --allow-net --allow-read=. --allow-write=scripts/reports scripts/benchmarks/benchmark-civic.ts
     - name: social
-      command: deno run --allow-env --allow-net --allow-read=. --allow-write=scripts/reports scripts/benchmark-social.ts
+      command: deno run --allow-env --allow-net --allow-read=. --allow-write=scripts/reports scripts/benchmarks/benchmark-social.ts
 ```
 
 Correct local dry-run shape before live execution:
 
 ```bash
-deno run --allow-env --allow-run --allow-read=. scripts/benchmark-scout-suite.ts --dry-run
-deno run --allow-env scripts/benchmark-qa-matrix.ts
-deno run --allow-read scripts/benchmark-beat-offline.ts
+deno run --allow-env --allow-run --allow-read=. scripts/benchmarks/benchmark-scout-suite.ts --dry-run
+deno run --allow-env scripts/benchmarks/benchmark-qa-matrix.ts
+deno run --allow-read scripts/benchmarks/benchmark-beat-offline.ts
 ```
 
 Incorrect pattern:
@@ -92,9 +92,8 @@ That conflates product-path health with worker auth. Civic Scout health should c
 ## Related
 
 - `docs/supabase/benchmarks.md`
-- `docs/specs/cron-auth-and-oss-benchmark-hardening.md`
 - `.github/workflows/weekly-scout-benchmarks.yml`
 - `.github/workflows/qa-matrix.yml`
-- `scripts/_bench_shared.ts`
-- `scripts/benchmark-scout-suite.ts`
-- `scripts/benchmark-internal-workers.ts`
+- `scripts/benchmarks/_bench_shared.ts`
+- `scripts/benchmarks/benchmark-scout-suite.ts`
+- `scripts/benchmarks/benchmark-internal-workers.ts`

@@ -156,11 +156,11 @@ For manual provider manifests, the setup script writes
 ## Upstream maintenance checks
 
 When a newsroom asks for current OSS updates, use
-`automation/upstream-maintenance-codex-prompt.txt`.
+`selfhost/upstream-maintenance-codex-prompt.txt`.
 
 Before merging upstream:
 
-- run `automation/selfhost-doctor.sh` from the checkout or parent deployment
+- run `selfhost/selfhost-doctor.sh` from the checkout or parent deployment
   directory
 - if the starting directory is not a Git worktree, look for a nested checkout
   such as `scoutpost-os/`
@@ -169,7 +169,7 @@ Before merging upstream:
   `frontend/.env.production`, Supabase config, and local migrations out of the
   upstream merge commit unless the operator explicitly asks to commit them
 - if `supabase/config.toml` uses a local signup hook, run
-  `automation/adopt-signup-allowlist.sh --domain <domain> --admin <email>`
+  `selfhost/adopt-signup-allowlist.sh --domain <domain> --admin <email>`
   before switching to the upstream allowlist hook
 - do not run `supabase db push` while untracked or locally modified migration
   files exist; list them and ask the operator to review

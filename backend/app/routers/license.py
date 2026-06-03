@@ -5,7 +5,7 @@ PURPOSE: Two endpoints for license key lifecycle:
 - POST /license/setup-guide — returns gated setup files for valid keys
 
 DEPENDS ON: services/license_key_service.py
-USED BY: legacy/private automation checks
+USED BY: selfhost/setup.sh, selfhost/sync-upstream.yml
 
 No authentication required on /license/validate — the key IS the credential.
 """
@@ -84,12 +84,12 @@ async def validate_license(request: Request):
 
 
 def _resolve_gated_file(name: str) -> str:
-    """Resolve a gated file from automation/ or deploy/ directories.
+    """Resolve a gated file from selfhost/ or deploy/ directories.
 
     Checks three locations in order:
     1. Production Dockerfile: files copied to backend/app/{name} (same dir as this code)
-    2. Docker Compose dev: directories mounted at /app/automation and /app/deploy
-    3. Local dev (no Docker): repo root automation/ and deploy/ directories
+    2. Docker Compose dev: directories mounted at /app/selfhost and /app/deploy
+    3. Local dev (no Docker): repo root selfhost/ and deploy/ directories
     """
     # 1. Production: Dockerfile COPYs files directly alongside app code
     app_dir = Path(__file__).resolve().parent.parent
@@ -97,11 +97,11 @@ def _resolve_gated_file(name: str) -> str:
     if direct_path.exists() and direct_path.stat().st_size > 0:
         return direct_path.read_text()
 
-    # 2 & 3: Map filenames to canonical paths under automation/ or deploy/
+    # 2 & 3: Map filenames to canonical paths under selfhost/ or deploy/
     file_map = {
-        "SETUP_AGENT.md": "automation/SETUP_AGENT.md",
-        "setup.sh": "automation/setup.sh",
-        "sync-upstream.yml": "automation/sync-upstream.yml",
+        "SETUP_AGENT.md": "selfhost/SETUP_AGENT.md",
+        "setup.sh": "selfhost/setup.sh",
+        "sync-upstream.yml": "selfhost/sync-upstream.yml",
         "render.yaml": "deploy/render/render.yaml",
         "SETUP.md": "deploy/SETUP.md",
     }

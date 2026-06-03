@@ -151,7 +151,7 @@ Install the sync workflow in your fork:
 
 ```bash
 mkdir -p .github/workflows
-cp automation/sync-upstream.yml .github/workflows/sync-upstream.yml
+cp selfhost/sync-upstream.yml .github/workflows/sync-upstream.yml
 git add .github/workflows/sync-upstream.yml
 git commit -m "ci: install sync-upstream"
 git push origin master
@@ -164,7 +164,7 @@ but it does not apply migrations or redeploy services.
 After reviewing and merging an upstream sync PR, run:
 
 ```bash
-automation/selfhost-doctor.sh
+selfhost/selfhost-doctor.sh
 supabase db push
 supabase functions deploy --all
 ```

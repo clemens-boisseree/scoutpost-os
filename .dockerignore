@@ -38,3 +38,4 @@ docker-compose.yml
 !frontend/static/skill.md
 !frontend/static/skills/
 !frontend/static/skills/*.md
+!selfhost/SETUP_AGENT.md

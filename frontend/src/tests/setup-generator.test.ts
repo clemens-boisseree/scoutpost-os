@@ -139,7 +139,7 @@ describe('setup generator', () => {
 		const dockerScript = buildDockerInstallerScript();
 		const onboarding = buildNewsroomOnboarding(data);
 
-		expect(script).toContain('automation/setup-from-manifest.sh');
+		expect(script).toContain('selfhost/setup-from-manifest.sh');
 		expect(prompt).toContain('Do not ask me to paste secrets into chat.');
 		expect(prompt).toContain('Prefer the Docker installer when Docker is available');
 		expect(prompt).toContain('Do not fall back to ad hoc host-machine setup');

@@ -45,7 +45,7 @@ _Why it serves the approach:_ Scoutpost's core boundary is that automation produ
 
 Progressively maintain parity across the UI, CLI, MCP, and REST surfaces without giving agents a separate data model or weaker contracts.
 
-_Why it serves the approach:_ Technical newsroom users should be able to automate Scoutpost without bypassing product rules, credit accounting, auth, or verification. Current parity gaps are tracked in `docs/architecture/agent-native-audit-2026-06-03.md`.
+_Why it serves the approach:_ Technical newsroom users should be able to automate Scoutpost without bypassing product rules, credit accounting, auth, or verification. 
 
 ### OSS and SaaS operability
 

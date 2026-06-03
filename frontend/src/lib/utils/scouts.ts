@@ -194,8 +194,7 @@ export function stripMarkdown(text: string): string {
 /**
  * Consolidated scout status system.
  * Single pill replaces the old two-badge (execution + criteria) approach.
- * See docs/plans/2026-03-03-scout-status-consolidation-design.md
- */
+ * */
 
 export type StatusVariant = 'success' | 'error' | 'neutral' | 'warning' | 'waiting';
 

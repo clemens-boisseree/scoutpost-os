@@ -445,7 +445,7 @@ subject to the following conditions:
 
 3. AUTOMATION SCRIPTS
 
-   The automation scripts included in the "automation/" directory
+   The self-hosting automation scripts included in the "selfhost/" directory
    (setup.sh, sync-upstream.yml, SETUP_AGENT.md) require a valid
    license key for automated execution. Manual execution of the steps
    described in these scripts does not require a license key. The
@@ -555,7 +555,7 @@ jobs:
 
           # ---------------------------------------------------------------
           # Keep everything else:
-          #   deploy/, automation/, supabase/, all features,
+          #   deploy/, selfhost/, supabase/, all features,
           #   all scout types, all 12 languages, v1 API,
           #   api_key_service, LICENSE
           # ---------------------------------------------------------------
@@ -653,7 +653,7 @@ Two deployment paths: managed (Supabase Cloud + Render) and self-hosted (Docker 
 
 Two deployment paths: **Managed** (Supabase Cloud + Render) and **Self-Hosted** (Docker Compose). Both run the same code.
 
-**Estimated time:** 1-2 hours with API keys ready. With a license key, `automation/setup.sh` automates most steps.
+**Estimated time:** 1-2 hours with API keys ready. With a license key, `selfhost/setup.sh` automates most steps.
 
 ---
 
@@ -812,10 +812,10 @@ If you have a coJournalist license key, the setup can be automated:
 
 ```bash
 export COJOURNALIST_LICENSE_KEY="cjl_your-key-here"
-bash automation/setup.sh
+bash selfhost/setup.sh
 ```
 
-This handles forking, API key collection, migration, deployment, and verification. See `automation/SETUP_AGENT.md` for AI-assisted setup.
+This handles forking, API key collection, migration, deployment, and verification. See `selfhost/SETUP_AGENT.md` for AI-assisted setup.
 
 ---
 
