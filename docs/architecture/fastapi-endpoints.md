@@ -17,14 +17,34 @@ FastAPI now hosts a thin set of endpoints: the auth broker (MuckRock OAuth + Sup
 Protected by Supabase Bearer JWTs in the current post-cutover runtime.
 The `get_current_user()` dependency in `dependencies/auth.py` delegates to `providers.get_auth()`, which returns `SupabaseAuth` while `deployment_target == "supabase"`. The older session-cookie branch remains as residual fallback code only.
 
-### Lambda / Edge Function Endpoints (Internal)
-Protected by `X-Service-Key` header. Key stored in AWS Secrets Manager (SaaS) or `.env` (self-hosted).
+### Internal Edge Function / Worker Endpoints
+Protected by the internal service-key boundary. In the current Supabase runtime,
+the key is stored as a Supabase Edge Function secret / Supabase Vault value or
+in local env files for self-hosted development.
 
 ```python
 def verify_service_key(x_service_key: str) -> None:
     if x_service_key != settings.internal_service_key:
         raise HTTPException(status_code=401, detail="Invalid service key")
 ```
+
+---
+
+## Historical Scout Endpoint Sections
+
+The sections below that describe `/api/scouts/execute`, `/api/pulse/execute`,
+`/api/social/execute`, `/api/civic/execute`, `/api/scrapers/monitoring`, AWS
+API Gateway, Lambda, EventBridge, DynamoDB records, or `SCRAPER#`/`TIME#`
+records are retained only for migration/debugging context. Current scout
+creation, scheduling, execution, and persistence use Supabase Edge Functions.
+
+Current references:
+
+- `docs/supabase/edge-functions.md`
+- `docs/supabase/scouts-runs.md`
+- `docs/supabase/social-apify.md`
+- `docs/supabase/civic-pipeline.md`
+- `docs/supabase/benchmarks.md`
 
 ---
 

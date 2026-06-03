@@ -1,10 +1,10 @@
 /**
  * mcp-server Edge Function — MCP (Model Context Protocol) JSON-RPC 2.0
- * server for coJournalist, with an embedded OAuth 2.1 authorization
+ * server for Scoutpost, with an embedded OAuth 2.1 authorization
  * server.
  *
- * PR 1+2 shipped the OAuth skeleton. PR 3 wires the JSON-RPC dispatcher
- * (rpc.ts) — 11 tools forwarded to the units/scouts/projects EFs.
+ * The JSON-RPC dispatcher (rpc.ts) forwards the tool surface to the
+ * units/scouts/projects/entities/reflections/ingest Edge Functions.
  *
  * Routes (after Kong strips `/mcp-server/` from the path):
  *
@@ -13,17 +13,21 @@
  *   POST /register                                -> RFC 7591 dynamic reg
  *   GET  /authorize                               -> 302 to mcp-auth
  *   POST /token                                   -> OAuth 2.1 token endpoint
- *   POST /                                        -> JSON-RPC (PR 3)
+ *   POST /                                        -> JSON-RPC
  *   *                                             -> 404 JSON
  *
  * This function sets `verify_jwt = false` in config.toml — the OAuth
- * endpoints are (by design) unauthenticated, and the future JSON-RPC
- * handler does its own token verification via `requireUser`.
+ * endpoints are (by design) unauthenticated, and the JSON-RPC handler
+ * does its own token verification via `requireUserOrApiKey`.
  */
 
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { logEvent } from "../_shared/log.ts";
-import { baseUrl, metadataHandler, protectedResourceHandler } from "./oauth/metadata.ts";
+import {
+  baseUrl,
+  metadataHandler,
+  protectedResourceHandler,
+} from "./oauth/metadata.ts";
 import { registerHandler } from "./oauth/register.ts";
 import { authorize } from "./oauth/authorize.ts";
 import { tokenHandler } from "./oauth/token.ts";
@@ -159,7 +163,8 @@ export async function handleRequest(req: Request): Promise<Response> {
       return new Response(
         JSON.stringify({
           error: "method_not_allowed",
-          error_description: "MCP endpoint is POST-only. Use POST with JSON-RPC 2.0 over HTTP.",
+          error_description:
+            "MCP endpoint is POST-only. Use POST with JSON-RPC 2.0 over HTTP.",
         }),
         {
           status: 405,

@@ -30,7 +30,12 @@ import { base64urlEncode, signState, verifyState } from "./oauth/state.ts";
 import { validateVerifier, verifyS256 } from "./oauth/pkce.ts";
 import { metadataHandler, protectedResourceHandler } from "./oauth/metadata.ts";
 import { handleRequest } from "./index.ts";
-import { MCP_PROTOCOL_VERSION } from "./rpc.ts";
+import {
+  MCP_PROTOCOL_VERSION,
+  mergeEntitiesBodyForMcp,
+  reflectionBodyForMcp,
+  SERVER_NAME,
+} from "./rpc.ts";
 
 // ---------------------------------------------------------------------------
 // Ensure MCP_STATE_SECRET is set for the unit tests. Use a deterministic
@@ -213,6 +218,52 @@ Deno.test("rpc: negotiateProtocolVersion echoes supported and falls back otherwi
   assertEquals(negotiateProtocolVersion("1999-01-01"), MCP_PROTOCOL_VERSION);
   assertEquals(negotiateProtocolVersion(undefined), MCP_PROTOCOL_VERSION);
   assertEquals(negotiateProtocolVersion(""), MCP_PROTOCOL_VERSION);
+});
+
+Deno.test("rpc: initialize advertises Scoutpost server name", () => {
+  assertEquals(SERVER_NAME, "scoutpost");
+});
+
+Deno.test("rpc: reflection MCP body supplies generated_by and source id fields", () => {
+  const body = reflectionBodyForMcp({
+    scope_description: "Weekly scout review",
+    content: "Two units need follow-up.",
+    unit_ids: ["11111111-1111-1111-1111-111111111111"],
+    entity_ids: ["22222222-2222-2222-2222-222222222222"],
+    scout_ids: ["33333333-3333-3333-3333-333333333333"],
+    generated_by: "caller-controlled",
+    metadata: { existing: true },
+  });
+  assertEquals(body.generated_by, "mcp");
+  assertEquals(body.source_unit_ids, ["11111111-1111-1111-1111-111111111111"]);
+  assertEquals(body.source_entity_ids, [
+    "22222222-2222-2222-2222-222222222222",
+  ]);
+  assertEquals(body.unit_ids, undefined);
+  assertEquals(body.entity_ids, undefined);
+  assertEquals(body.metadata, {
+    existing: true,
+    scout_ids: ["33333333-3333-3333-3333-333333333333"],
+  });
+});
+
+Deno.test("rpc: merge_entities MCP body forwards keep_id for API schema", () => {
+  const body = mergeEntitiesBodyForMcp({
+    keep_id: "11111111-1111-1111-1111-111111111111",
+    merge_ids: ["22222222-2222-2222-2222-222222222222"],
+  });
+  assertEquals(body, {
+    keep_id: "11111111-1111-1111-1111-111111111111",
+    merge_ids: ["22222222-2222-2222-2222-222222222222"],
+  });
+});
+
+Deno.test("rpc: merge_entities MCP body accepts deprecated keeper_id alias", () => {
+  const body = mergeEntitiesBodyForMcp({
+    keeper_id: "11111111-1111-1111-1111-111111111111",
+    merge_ids: ["22222222-2222-2222-2222-222222222222"],
+  });
+  assertEquals(body.keep_id, "11111111-1111-1111-1111-111111111111");
 });
 
 Deno.test("rpc: tools/list without bearer returns HTTP 401 with WWW-Authenticate", async () => {

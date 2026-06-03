@@ -34,10 +34,12 @@ const SUPPORTED_PROTOCOL_VERSIONS = new Set([
   "2025-03-26",
   "2024-11-05",
 ]);
-const SERVER_NAME = "cojournalist";
+export const SERVER_NAME = "scoutpost";
 const SERVER_VERSION = "0.3.0";
 
-export function negotiateProtocolVersion(requested: string | undefined): string {
+export function negotiateProtocolVersion(
+  requested: string | undefined,
+): string {
   return SUPPORTED_PROTOCOL_VERSIONS.has(requested ?? "")
     ? (requested as string)
     : MCP_PROTOCOL_VERSION;
@@ -107,6 +109,47 @@ function q(
     out[k] = typeof v === "boolean" ? String(v) : String(v);
   }
   return out;
+}
+
+export function reflectionBodyForMcp(
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const {
+    unit_ids,
+    entity_ids,
+    scout_ids,
+    generated_by: _ignoredGeneratedBy,
+    ...rest
+  } = args;
+  const body: Record<string, unknown> = {
+    ...rest,
+    generated_by: "mcp",
+  };
+  if (Array.isArray(unit_ids)) body.source_unit_ids = unit_ids;
+  if (Array.isArray(entity_ids)) body.source_entity_ids = entity_ids;
+  if (Array.isArray(scout_ids)) {
+    body.metadata = {
+      ...(typeof rest.metadata === "object" && rest.metadata !== null
+        ? rest.metadata as Record<string, unknown>
+        : {}),
+      scout_ids,
+    };
+  }
+  return body;
+}
+
+export function mergeEntitiesBodyForMcp(
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const keepId = typeof args.keep_id === "string"
+    ? args.keep_id
+    : typeof args.keeper_id === "string"
+    ? args.keeper_id
+    : undefined;
+  return {
+    keep_id: keepId,
+    merge_ids: args.merge_ids,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -651,11 +694,18 @@ const TOOLS: ToolDef[] = [
           type: "array",
           items: { type: "string", format: "uuid" },
         },
-        scout_ids: { type: "array", items: { type: "string", format: "uuid" } },
+        scout_ids: {
+          type: "array",
+          items: { type: "string", format: "uuid" },
+          description:
+            "Optional scout IDs to retain as reflection metadata.scout_ids; the reflections API has first-class source links only for units and entities.",
+        },
       },
     },
     handler: (_u, token, args) =>
-      forward(token, "POST", "reflections", "", { body: args }),
+      forward(token, "POST", "reflections", "", {
+        body: reflectionBodyForMcp(args),
+      }),
   },
   {
     name: "search_reflections",
@@ -700,9 +750,19 @@ const TOOLS: ToolDef[] = [
       "Collapse duplicate entities into a single keeper. Use after `search_entities` surfaces near-duplicates.",
     inputSchema: {
       type: "object",
-      required: ["keeper_id", "merge_ids"],
+      required: ["merge_ids"],
+      oneOf: [
+        { required: ["keep_id"] },
+        { required: ["keeper_id"] },
+      ],
       properties: {
-        keeper_id: { type: "string", format: "uuid" },
+        keep_id: { type: "string", format: "uuid" },
+        keeper_id: {
+          type: "string",
+          format: "uuid",
+          deprecated: true,
+          description: "Deprecated alias for keep_id.",
+        },
         merge_ids: {
           type: "array",
           items: { type: "string", format: "uuid" },
@@ -711,7 +771,9 @@ const TOOLS: ToolDef[] = [
       },
     },
     handler: (_u, token, args) =>
-      forward(token, "POST", "entities", "/merge", { body: args }),
+      forward(token, "POST", "entities", "/merge", {
+        body: mergeEntitiesBodyForMcp(args),
+      }),
   },
 ];
 
@@ -796,7 +858,10 @@ async function readRpcBody(req: Request): Promise<JsonRpcRequest | null> {
   }
 }
 
-export async function handleRpc(req: Request, requestId?: string): Promise<Response> {
+export async function handleRpc(
+  req: Request,
+  requestId?: string,
+): Promise<Response> {
   const body = await readRpcBody(req);
   if (!body) {
     logEvent({
@@ -815,7 +880,8 @@ export async function handleRpc(req: Request, requestId?: string): Promise<Respo
     request_id: requestId,
     method: body.method,
     rpc_id: body.id ?? null,
-    has_auth: !!(req.headers.get("authorization") ?? req.headers.get("Authorization")),
+    has_auth:
+      !!(req.headers.get("authorization") ?? req.headers.get("Authorization")),
   });
 
   // Auth gate runs BEFORE any method dispatch — including the
@@ -855,7 +921,9 @@ export async function handleRpc(req: Request, requestId?: string): Promise<Respo
     // back to our advertised default. MCP clients (Claude.ai in particular)
     // disconnect if the server picks a version they don't recognise.
     return rpcOk(body.id, {
-      protocolVersion: negotiateProtocolVersion(body.params?.protocolVersion as string | undefined),
+      protocolVersion: negotiateProtocolVersion(
+        body.params?.protocolVersion as string | undefined,
+      ),
       serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
       capabilities: { tools: { listChanged: false } },
     });

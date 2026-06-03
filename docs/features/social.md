@@ -2,326 +2,135 @@
 
 > **Naming:** In the UI, this appears as "Social Scout". The backend type code is `social`.
 
-Social media profile monitoring with post diffing and criteria matching.
+Social Scouts monitor public social profiles for new posts and, when enabled, removed posts. The current runtime is Supabase Edge Functions plus Apify: `execute-scout` calls `social-kickoff`, Apify runs asynchronously, and `apify-callback` or `apify-reconcile` writes canonical units and post snapshots.
 
-## Current runtime note
+Do not model new social work around EventBridge, Lambda, DynamoDB `POSTS#` records, or `/api/social/execute`. Those are pre-cutover names.
 
-The live runtime is the Supabase Edge Function path:
-- kickoff: `social-kickoff`
-- async processing: `apify-callback` / `apify-reconcile`
-- canonical writes: `_shared/unit_dedup.ts` → `upsert_canonical_unit`
+## Supported Platforms
 
-Social scouts use the same canonical dedup service as web/beat/civic, but
-with a stricter semantic boundary: exact matches may merge across scout types,
-while semantic matching does not cross between `social` and `non-social`
-canonical rows.
+| Platform | Apify Actor ID | Media support |
+| --- | --- | --- |
+| Instagram | `pmQcv69sB1UwguQUY` | Text, image URLs, video URLs |
+| X/Twitter | `61RPP7dywgiy0JPD0` | Text and media URLs |
+| Facebook | `cleansyntax~facebook-profile-posts-scraper` | Text, image URLs, video URLs |
+| TikTok | `novi~tiktok-user-api` | Text, cover image, video URL |
 
-## Overview
-
-Social Scouts monitor social media profiles for new (and optionally removed) posts. Four platforms are supported:
-
-| Platform | Apify Actor ID | Media Support |
-|----------|----------------|---------------|
-| Instagram | `pmQcv69sB1UwguQUY` | Text + images + video URLs |
-| X/Twitter | `61RPP7dywgiy0JPD0` | Text + media URLs |
-| Facebook | `cleansyntax~facebook-profile-posts-scraper` | Text + images + video URLs |
-| TikTok | `novi~tiktok-user-api` | Text + cover image + video URLs |
-
-Two monitor modes:
+## Modes
 
 | Mode | Behavior |
-|------|----------|
-| **Summarize** | AI-generated summary of new posts, always notifies when new posts found |
-| **Criteria** | Embed new posts on-the-fly, compare against criteria via cosine similarity (threshold > 0.65) |
+| --- | --- |
+| `summarize` | New posts produce an AI summary and notification. |
+| `criteria` | New posts are embedded and compared against the scout criteria; only matches create relevant units/alerts. |
 
-Optional **removal tracking** (`track_removals: true`) detects posts that disappear between runs.
+Optional `track_removals` reports posts that disappear between snapshots.
 
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                  SOCIAL SCOUT EXECUTION                          │
-│                                                                  │
-│  Trigger: EventBridge → Lambda → POST /api/social/execute        │
-│           OR: UI test → POST /api/social/test                    │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Step 1: Scrape Profile (Apify)                                  │
-│  ├─ Start actor run via apify_client                             │
-│  ├─ Poll every 2s until complete (max 120s)                      │
-│  └─ Normalize raw output → NormalizedPost[]                      │
-│           │                                                      │
-│           ▼                                                      │
-│  Step 2: ID-Based Diffing (Layer 1)                              │
-│  ├─ Load previous POSTS# snapshot from DynamoDB                  │
-│  ├─ identify_new_posts: IDs in current but not previous          │
-│  └─ identify_removed_posts: IDs in previous but not current      │
-│           │                                                      │
-│           ▼                                                      │
-│  Step 3: Mode-Specific Processing                                │
-│  ├─ If "summarize": AI summary of new posts (OpenRouter)         │
-│  └─ If "criteria": embed + cosine similarity (Layer 2)           │
-│           │                                                      │
-│           ▼                                                      │
-│  Step 4: Notify + Store                                          │
-│  ├─ Send email notification (Resend)                             │
-│  ├─ Store EXEC# record                                           │
-│  ├─ Overwrite POSTS# snapshot with current posts                 │
-│  └─ Decrement credits                                            │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-## Two-Layer Detection
-
-### Layer 1: ID-Based Diffing
-
-The baseline stored in `POSTS#` contains post IDs only (no embeddings). Each execution scrapes the profile, compares post IDs against the baseline, and identifies:
-
-- **New posts** — IDs present in current scrape but absent from previous snapshot (`identify_new_posts`)
-- **Removed posts** — IDs present in previous snapshot but absent from current scrape (`identify_removed_posts`, only when `track_removals` is enabled)
-
-Scheduled creation establishes this baseline server-side for UI, API, CLI, and MCP callers. The UI scan can pass preview baseline posts as an optimization, but non-UI agents only need `platform` and `profile_handle`; the create endpoint performs the baseline scrape before scheduling. Run Now refuses to execute a social scout with no saved baseline instead of treating existing posts as new.
-
-### Layer 2: Criteria Matching (on-the-fly embeddings)
-
-Only runs in `criteria` mode, and only on new posts identified by Layer 1.
-
-1. Embed the user's criteria text as a `RETRIEVAL_QUERY`
-2. Embed each new post at execution time:
-   - **Instagram/TikTok/Facebook**: multimodal embedding (text + first image via Gemini) when images available
-   - **X**: text-only embedding (typically no images)
-   - All platforms fall back to text-only when no images are available
-3. Compare via cosine similarity — posts with similarity > 0.65 are matches
-
-The baseline never stores embeddings because they are only needed for the criteria comparison, not for diffing.
-
-## Multimodal Embedding
-
-Uses **Gemini Embedding 2** (`gemini-embedding-2-preview`, 1536 dimensions) via `embedding_utils.py`.
-
-| Platform | Embedding Type | Input |
-|----------|---------------|-------|
-| Instagram/TikTok/Facebook (with images) | Multimodal | `"{author}: {text}"` + first image bytes |
-| Any platform (no images) | Text-only | `"{author}: {text}"` |
-
-Image bytes are downloaded from CDN URLs via `download_image()` (15s timeout, graceful fallback to text-only on failure).
-
-## Data Models
-
-### NormalizedPost
-
-Unified representation across platforms:
-
-```python
-class NormalizedPost(BaseModel):
-    id: str                          # Platform-native post ID
-    url: str                         # Direct link to post
-    text: str                        # Caption (Instagram) or tweet text
-    author: str                      # Username/handle
-    timestamp: str                   # ISO timestamp
-    image_urls: List[str] = []       # Image CDN URLs (Instagram only in Phase 1)
-    video_url: Optional[str] = None  # Video URL (Instagram only, when isVideo)
-    platform: SocialPlatform         # "instagram" | "x" | "facebook" | "tiktok"
-    engagement: dict = {}            # Platform-specific metrics
-```
-
-Engagement fields by platform:
-- **Instagram**: `likes`, `comments`
-- **X**: `likes`, `retweets`, `replies`
-- **Facebook**: `likes`, `comments`, `shares`
-- **TikTok**: empty (content-only — journalists monitor against criteria, not metrics)
-
-### PostSnapshot
-
-Lightweight record stored in the POSTS# baseline:
-
-```python
-class PostSnapshot(BaseModel):
-    post_id: str
-    caption_truncated: str           # First 200 chars
-    image_url: Optional[str] = None  # First image URL
-    timestamp: str
-```
-
-### DynamoDB POSTS# Records
+## Current Runtime
 
 ```
-Table: scraping-jobs
-PK: {user_id}
-SK: POSTS#{scout_name}
-Fields:
-  posts: JSON string of PostSnapshot[]
-  platform: "instagram" | "x" | "facebook" | "tiktok"
-  handle: profile handle
-  updated_at: ISO timestamp
-  post_count: int
-  ttl: 90 days from write time
+pg_cron/pg_net
+  -> execute-scout
+  -> social-kickoff
+       - load social scout config
+       - decrement platform-specific credits
+       - insert apify_run_queue row
+       - start Apify actor with callback URL
+       - return 202 / queue_id
+
+Apify actor terminal event
+  -> apify-callback
+       - find apify_run_queue by apify_run_id
+       - fetch dataset
+       - normalize posts
+       - diff against post_snapshots
+       - process new/removed posts
+       - upsert canonical information_units / unit_occurrences
+       - update post_snapshots and scout_runs
+
+apify-reconcile
+  -> cron fallback for missed callbacks or cold-start gaps
 ```
 
-### Request/Response Schemas
+`apify_mark_timeouts()` marks stuck pending/running queue rows after two hours. `cleanup_apify_queue()` removes terminal rows older than seven days.
 
-```python
-class SocialTestRequest(BaseModel):
-    platform: SocialPlatform         # "instagram" | "x" | "facebook" | "tiktok"
-    handle: str                      # Auto-strips leading "@"
+## Baselines And Diffing
 
-class SocialTestResponse(BaseModel):
-    valid: bool
-    profile_url: str
-    error: Optional[str] = None
-    post_ids: List[str] = []         # Baseline IDs for snapshot
-    preview_posts: List[dict] = []   # Truncated preview for UI
-    posts_data: List[dict] = []      # Full snapshot data to store at schedule time
+`post_snapshots` stores one baseline row per social scout. Scheduled creation establishes a baseline server-side for UI, API, CLI, and MCP callers. The UI can pass preview posts as an optimization, but non-UI agents only need `platform` and `profile_handle`; the create endpoint performs the baseline scrape before scheduling.
 
-class SocialExecuteRequest(BaseModel):
-    userId: str
-    scraperName: str
-    platform: SocialPlatform
-    profile_handle: str
-    monitor_mode: SocialMonitorMode  # "summarize" | "criteria"
-    track_removals: bool = False
-    criteria: Optional[str] = None
-    topic: Optional[str] = Field(None, max_length=200)
-    preferred_language: str = "en"
-```
+Each execution compares current platform post IDs against the stored snapshot:
 
-## API Endpoints
+- New IDs become candidate posts.
+- Removed IDs are reported only when `track_removals` is true.
+- Successful runs replace the snapshot with the latest post set.
+- Run Now refuses to execute a social scout without a saved baseline instead of treating all existing posts as new.
 
-### POST /social/test (session auth)
+## Criteria Matching
 
-Validate a social media profile and scrape baseline posts.
+Criteria mode runs only on new posts after ID diffing.
 
-**Auth:** Session cookie (`get_current_user`)
+1. Embed the criteria text as a retrieval query.
+2. Embed each new post:
+   - Instagram, TikTok, and Facebook can use multimodal Gemini embeddings when images are available.
+   - X/Twitter generally uses text-only embeddings.
+   - Every platform falls back to text-only when image download fails.
+3. Compare embeddings by cosine similarity and keep matches above the configured threshold.
 
-**Request:**
-```json
-{
-  "platform": "instagram",
-  "handle": "buriedsignals"
-}
-```
+The baseline does not store embeddings. Embeddings are execution-time data for relevance checks, not snapshot state.
 
-**Response (success):**
-```json
-{
-  "valid": true,
-  "profile_url": "https://www.instagram.com/buriedsignals/",
-  "post_ids": ["3595...001", "3594...002"],
-  "preview_posts": [
-    {"id": "3595...001", "text": "First 120 chars of caption...", "timestamp": "2026-03-10T12:00:00Z"}
-  ],
-  "posts_data": [
-    {"post_id": "3595...001", "caption_truncated": "First 200 chars...", "image_url": "https://...", "timestamp": "2026-03-10T12:00:00Z"}
-  ]
-}
-```
+## Canonical Units And Dedup
 
-**Response (invalid profile):**
-```json
-{
-  "valid": false,
-  "profile_url": "https://www.instagram.com/nonexistent/",
-  "error": "Profile not found or inaccessible"
-}
-```
+Social scouts write through the same canonical unit service as page, beat, civic, and manual ingest. The semantic boundary is stricter for social:
 
-### POST /social/execute (service key auth)
+- Exact source matches may merge across scout types.
+- Semantic matching does not cross between social and non-social canonical rows.
 
-Full social scout execution: scrape, diff, summarize/criteria, notify, store.
+This prevents a social post summary from collapsing into an unrelated page/beat/civic unit solely because the text is similar.
 
-**Auth:** `X-Service-Key` header (`verify_service_key`)
+## Data Model
 
-**Request:**
-```json
-{
-  "userId": "user_abc123",
-  "scraperName": "my-social-scout",
-  "platform": "x",
-  "profile_handle": "nytimes",
-  "monitor_mode": "summarize",
-  "track_removals": false,
-  "preferred_language": "en"
-}
-```
+| Table | Purpose |
+| --- | --- |
+| `apify_run_queue` | One async Apify actor run per social scout execution. |
+| `post_snapshots` | Current baseline posts per scout. |
+| `scout_runs` | Execution status, timings, counts, and errors. |
+| `information_units` | Canonical units for new/removal findings. |
+| `unit_occurrences` | Source/provenance rows for canonical social units. |
 
-**Response:**
-```json
-{
-  "scraper_status": true,
-  "criteria_status": true,
-  "summary": "3 new posts about...",
-  "notification_sent": true,
-  "new_posts": 3,
-  "removed_posts": 0,
-  "total_posts": 20
-}
-```
-
-## Key Files
-
-| File | Location | Purpose |
-|------|----------|---------|
-| `social_orchestrator.py` | `backend/app/services/` | Normalization, diffing, embedding, summary, notification |
-| `social.py` | `backend/app/routers/` | `/api/social/*` endpoints |
-| `social.py` | `backend/app/schemas/` | Request/response Pydantic models |
-| `modes.py` | `backend/app/models/` | `SocialPlatform` and `SocialMonitorMode` type definitions |
-| `apify_client.py` | `backend/app/workflows/` | Apify actor start/poll functions |
-| `embedding_utils.py` | `backend/app/services/` | Gemini Embedding 2 (text + multimodal) |
-| `execution_deduplication.py` | `backend/app/services/` | EXEC# record storage |
-| `notification_service.py` | `backend/app/services/` | Email notifications via Resend |
-
-## Apify Actors
-
-### Instagram: `pmQcv69sB1UwguQUY`
-
-- Input: profile URL, `max_items`
-- Output fields: `id`, `code`, `caption`, `owner.username`, `createdAt`, `image.url`, `video.url`, `isVideo`, `likeCount`, `commentCount`
-- Normalization: `normalize_instagram_posts()`
-
-### X/Twitter: `61RPP7dywgiy0JPD0`
-
-- Input: profile URL, `max_tweets`
-- Output fields: `id`, `id_str`, `text`, `author.username`, `created_at`, `url`, `favorite_count`, `retweet_count`, `reply_count`
-- Normalization: `normalize_x_posts()`
-
-### Facebook: `cleansyntax~facebook-profile-posts-scraper`
-
-- Input: profile URL, `max_posts`
-- Output fields: `post_id`, `message`, `timestamp` (unix), `author.name`, `image.uri`, `album_preview`, `video.url`, `reactions_count`, `comments_count`, `reshare_count`
-- Normalization: `normalize_facebook_posts()`
-- Rejects Facebook Page URLs (only personal profiles)
-
-### TikTok: `novi~tiktok-user-api`
-
-- Input: profile URL, `limit`
-- Output fields: `aweme_id`, `desc`, `create_time` (unix), `share_url`, `author.unique_id`, `video.cover.url_list`, `video.play_addr.url_list`
-- Normalization: `normalize_tiktok_posts()`
-- Content-only: no engagement metrics (journalists monitor against criteria, not vanity metrics)
-- Cover image used for multimodal embedding
-
-All actors are started asynchronously and polled every 2 seconds until completion or 120-second timeout.
+See `docs/supabase/social-apify.md` for table columns, cron jobs, and operational SQL.
 
 ## Credit Cost
 
 | Platform | Scheduled execution | Test |
-|----------|-------------------|------|
+| --- | --- | --- |
 | Instagram | 2 | 0 |
 | X/Twitter | 2 | 0 |
 | Facebook | 15 | 0 |
 | TikTok | 2 | 0 |
 
-## Benchmarking
+Credits are deducted at kickoff. Apify platform billing is separate from Scoutpost credits.
 
-```bash
-cd backend
-python scripts/benchmark_social.py              # Quick benchmark (2 profiles)
-python scripts/benchmark_social.py --audit       # Full audit (all scenarios + report)
-```
+## Function Surface
 
-Tests profile validation, Apify scraping, post normalization, ID-based diffing, AI summary generation, and criteria matching across both platforms and both monitor modes.
+| Surface | Purpose |
+| --- | --- |
+| `POST /functions/v1/social-test` | Validate/profile-preview path used before scheduling. |
+| `POST /functions/v1/social-kickoff` | Scheduled run kickoff and Apify actor start. |
+| `POST /functions/v1/apify-callback` | Apify webhook receiver for terminal actor runs. |
+| `POST /functions/v1/apify-reconcile` | Cron fallback for missed callbacks. |
+| `POST /functions/v1/execute-scout` | Generic scheduled dispatcher that routes social scouts to `social-kickoff`. |
+
+## Key Files
+
+| File | Purpose |
+| --- | --- |
+| `supabase/functions/social-test/` | Profile validation and preview. |
+| `supabase/functions/social-kickoff/` | Queue row creation and actor start. |
+| `supabase/functions/apify-callback/` | Webhook handling, dataset fetch, diff, unit writes. |
+| `supabase/functions/apify-reconcile/` | Missed-webhook reconciliation. |
+| `supabase/functions/_shared/unit_dedup.ts` | Canonical unit dedup boundary. |
+| `docs/supabase/social-apify.md` | Queue, cron, actor, and operations reference. |
 
 ## Related Docs
 
-- `docs/supabase/social-apify.md` - Social Scout queueing, callback, snapshots, and reconciliation
-- `docs/supabase/scouts-runs.md` - scout scheduling and run records
+- `docs/supabase/social-apify.md`
+- `docs/supabase/scouts-runs.md`
+- `supabase/migrations/00022_apify_failsafe.sql`

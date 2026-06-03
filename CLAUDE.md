@@ -25,6 +25,9 @@ Before coding in this project, read `/Users/tomvaillant/buried_signals/kit/codin
    gh pr create --title "..." --body "..."
    ```
 
+   After the PR exists, always tag Greptile for review with a PR comment:
+   `@greptileai review`.
+
 4. **Wait for CI to pass** — 4 required checks must be green:
    - `build-frontend` — SvelteKit build
    - `test-frontend` — Vitest suite
@@ -34,6 +37,7 @@ Before coding in this project, read `/Users/tomvaillant/buried_signals/kit/codin
 5. **Merge the PR** — Render auto-deploys backend from `main`.
 
 **Why:** Pushing to `main` triggers a Render deploy immediately with no safety net. The PR flow ensures CI passes and Claude reviews the code before anything reaches production.
+Greptile review is required on every PR as an additional independent review pass.
 
 ---
 
@@ -176,6 +180,7 @@ The smoke script uses the current Chrome session through `browser-harness`. It m
 
 Keep Supabase integration tests small and direct. Do not build fixture-heavy local Supabase environments just to satisfy one env-gated test.
 
+- Before changing benchmark scripts or weekly benchmark workflows, read `docs/solutions/workflow-issues/benchmark-auth-model.md`. Scout-type benchmarks must stay on the user-authenticated product path; internal worker auth smoke and OSS Docker validation are separate health checks.
 - For valuable function tests that need real Supabase services, use the local CLI stack and source `supabase status -o env` for `API_URL`, anon/publishable key, and service-role key.
 - Runtime smoke tests must be explicitly gated (for example `COJO_SELFHOST_RUNTIME_SMOKE=1`) and guarded against accidental production targets unless the test deliberately opts into remote.
 - Prefer local-only auth/API/database checks over external scrape, LLM, email, or Apify calls in CI.
@@ -193,10 +198,11 @@ AI-powered local news monitoring platform. Users create "scouts" that monitor we
 |-------|------------|
 | Frontend | SvelteKit (static SPA), TailwindCSS |
 | Backend | FastAPI (Python), hosted on Render — production at `https://www.scoutpost.ai/api` |
-| Database | DynamoDB (scout metadata + run history) |
-| Scheduling | AWS EventBridge Scheduler |
+| Database | Supabase Postgres with pgvector / HNSW search |
+| Scheduling | Supabase `pg_cron` + `pg_net` calling Edge Functions |
 | Auth | MuckRock OAuth 2.0 (SaaS, session cookies) / Supabase Auth (OSS, Bearer JWT) |
-| AI | Gemini 2.5 Flash-Lite (default LLM, direct API), OpenRouter (fallback), Firecrawl (web search) |
+| Scout runtime | Supabase Edge Functions (`execute-scout`, `scout-*`, `social-*`, `civic-*`) |
+| AI | Gemini 2.5 Flash-Lite (default LLM, direct API), Exa for beat search, OpenRouter fallback, Firecrawl scraping |
 | Email | Resend |
 | Maps | MapTiler (geocoding) |
 
@@ -205,22 +211,26 @@ AI-powered local news monitoring platform. Users create "scouts" that monitor we
 ```
 /
 ├── frontend/          # SvelteKit SPA
-├── backend/           # FastAPI Python backend
-├── aws/               # Lambda functions + infrastructure
+├── backend/           # FastAPI broker/API/admin service on Render
+├── supabase/          # Edge Functions, migrations, pg_cron jobs
+├── cli/               # Deno `scout` CLI
+├── mcp/               # stdio MCP bridge
 └── docs/              # Detailed architecture docs
 ```
 
 ## Key Documentation
 
-- **AWS Architecture**: `docs/architecture/aws-architecture.md` - Lambda functions, DynamoDB schema, EventBridge
-- **API Endpoints**: `docs/architecture/fastapi-endpoints.md` - All REST endpoints with examples
+- **Supabase Functions**: `docs/supabase/edge-functions.md` - current Edge Function runtime map
+- **Scout Scheduling / Runs**: `docs/supabase/scouts-runs.md` - pg_cron, schedule management, run records
+- **Benchmarks**: `docs/supabase/benchmarks.md` - scout benchmarks, worker smoke, OSS checks
+- **API Endpoints**: `docs/architecture/fastapi-endpoints.md` - FastAPI broker/public API map with legacy notes
 - **Page Scouts**: `docs/features/web-scouts.md` - Website change detection
-- **Records & Dedup**: `docs/architecture/records-and-deduplication.md` - DynamoDB records, dedup layers
+- **Records & Dedup**: `docs/architecture/records-and-deduplication.md` - canonical units and dedup layers
 - **Entitlements & Credits**: `docs/muckrock/plans-and-entitlements.md` - MuckRock entitlement tiers, credit costs
 - **MuckRock Integration**: `docs/muckrock/oauth-integration.md` - OAuth flow, session management
-- **Team Plan**: `docs/muckrock/entitlements-team-design.md` - Shared credit pool, ORG# records, seat management
+- **Team Plan**: `docs/muckrock/entitlements-team-design.md` - Shared credit pool and seat management
 - **OSS / Self-Hosted**: `docs/oss/` - Architecture, adapters, Supabase, licensing, deployment, automation
-- **AWS Deployment**: `aws/README.md` - Lambda deployment commands
+- **Historical AWS docs**: `docs/architecture/aws-architecture.md`, `aws/` - migration reference only; not the default runtime
 
 ## Service Documentation
 
@@ -256,11 +266,11 @@ Revenue reporting for MuckRock pilot invoicing. Accessible at `/api/admin/` (bro
 |------|---------|
 | `backend/app/routers/admin.py` | Dashboard HTML + JSON API endpoints |
 | `backend/app/services/admin_report_service.py` | Report generation, metrics, email template |
-| `backend/app/adapters/aws/admin_storage.py` | USAGE# record storage + aggregate queries |
+| `supabase/functions/admin-report/` | Supabase-backed report generation endpoint |
 | `backend/app/schemas/admin.py` | Pydantic response models |
 | `backend/app/dependencies/auth.py` | `require_admin` dependency (ADMIN_EMAILS check) |
 
-**USAGE# records:** Written on every credit decrement (fire-and-forget from `decrement_credit()` in `billing.py`). Stored in DynamoDB with 90-day TTL. PK is `ORG#{id}` or `USER#{id}`, SK is `USAGE#{timestamp}#{uuid}`.
+Usage and credit records now live in Supabase tables and are queried through the admin/reporting service. Do not add new DynamoDB `USAGE#` code; any remaining AWS admin references are migration history.
 
 **Endpoints:**
 - `GET /api/admin/` — Browser dashboard (metrics + current month invoice)
@@ -320,17 +330,18 @@ directly from the public mirror with Deno.
 ## Data Flow
 
 ```
-User creates scout → FastAPI → AWS API Gateway → Lambda creates:
-                                                  ├── EventBridge Schedule (cron)
-                                                  └── DynamoDB SCRAPER# record
+User creates scout → Supabase `scouts` Edge Function
+                  → `scouts` table row + baseline where applicable
+                  → `manage-schedule` stores pg_cron/pg_net schedule
 
-On schedule → EventBridge → scraper-lambda → FastAPI scouts endpoint:
-                                             ├── Execute scout logic
-                                             ├── AI analysis
-                                             ├── Send notification (Resend)
-                                             └── Decrement credits (MuckRock entitlements)
-                            ↓
-              scraper-lambda stores TIME# record in DynamoDB
+On schedule → pg_cron/pg_net → `execute-scout`
+                           → type-specific function:
+                              ├── `scout-web-execute`
+                              ├── `scout-beat-execute`
+                              ├── `social-kickoff` → Apify callback/reconcile
+                              └── `civic-execute` → civic extraction queue/worker
+                           → canonical `information_units` / `unit_occurrences`
+                           → `scout_runs`, credits, and Resend notifications
 ```
 
 ## Pre-Commit Verification - MANDATORY
@@ -396,7 +407,7 @@ CI runs automatically on push to `develop` and on PRs to `main`. See **Deploymen
 ```
 feature branch → push → CI runs
                           ↓
-               PR to main → CI + Claude review
+               PR to main → CI + Claude review + Greptile review
                           ↓
                merge → Render auto-deploys backend
 ```
@@ -411,14 +422,15 @@ feature branch → push → CI runs
 - `OPENROUTER_API_KEY` - AI access
 - `LLM_MODEL` - LLM model identifier (default: `gemini-2.5-flash-lite`). Gemini models route to Google AI direct API; others route to OpenRouter.
 - `GEMINI_API_KEY` - Gemini API key (LLM + multimodal embeddings)
+- `EXA_API_KEY` - Beat search provider
 - `FIRECRAWL_API_KEY` - Web scraping
 - `APIFY_API_TOKEN` - Apify API token (social media scraping)
 - `RESEND_API_KEY` - Email notifications
-- `INTERNAL_SERVICE_KEY` - Lambda → FastAPI auth
-- `AWS_API_BASE_URL` - AWS API Gateway URL
+- `INTERNAL_SERVICE_KEY` - Internal Edge Function / scheduled-worker auth
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` - Supabase runtime and tests
 
 ### Frontend (Build-time)
 - `PUBLIC_MAPTILER_API_KEY` - Geocoding
 
-### AWS Lambda
-- See `aws/README.md` for Lambda-specific env vars
+### Historical AWS Lambda
+- Do not add new Lambda/EventBridge/DynamoDB configuration for the current runtime. See `aws/README.md` only when reading migration history or removing legacy code.

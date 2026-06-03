@@ -62,11 +62,13 @@ The two functions share `MCP_STATE_SECRET` so `mcp-auth` can verify state tokens
 
 ## Tools surface
 
-JSON-RPC `tools/list` returns the union of:
-- `search_units` — semantic search over `information_units` table
-- `list_scouts` / `get_scout` / `create_scout` / `delete_scout` — scout CRUD
-- `list_projects` / `get_project` — project metadata
-- `ingest_units` — manual ingest of URLs/text into a project
+JSON-RPC `tools/list` returns the Scoutpost product surface grouped around:
+
+- Scouts — list, create, inspect, update, run, pause, resume, and delete page, beat, social, and civic scouts.
+- Units — list, search, inspect, verify, reject, mark used, and soft-delete information units.
+- Projects — list, create, inspect, update, and delete investigation projects.
+- Ingest — `ingest_content` for manual URL/text ingestion into a project.
+- Entities and reflections — search, inspect, merge entities, and create/list/update reflections.
 
 Every tool runs through `requireUserOrApiKey` so RLS policies in the downstream tables are enforced as the connector user. The bridge does not bypass RLS.
 
