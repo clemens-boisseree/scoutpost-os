@@ -130,3 +130,5 @@ docs/superpowers/
 
 # Generated EF bundles (regenerate via scripts/bundle-ef.ts)
 supabase/functions/*/_bundled.ts
+
+CLAUDE.md
